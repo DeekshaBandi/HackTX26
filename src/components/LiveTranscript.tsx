@@ -19,6 +19,7 @@ type Call = {
   from: string
   startedTs: number
   active: boolean
+  endedTs: number | null
   // Started while this page was open, so it drops in like a new call box.
   fresh: boolean
   lines: Line[]
@@ -33,11 +34,11 @@ type Message =
   | { type: 'snapshot'; calls: ServerCall[] }
   | { type: 'call_started'; call_id: string; from_number: string; ts: number }
   | { type: 'muse_transcript' | 'operator_text'; call_id: string; turn_id: unknown; text: string; final: boolean; ts: number }
-  | { type: 'call_ended'; call_id: string }
+  | { type: 'call_ended'; call_id: string; ts: number }
   | { type: 'call_record' }
 
 function blankCall(id: string, from = '', startedTs = Date.now() / 1000): Call {
-  return { id, from, startedTs, active: true, fresh: false, lines: [] }
+  return { id, from, startedTs, active: true, endedTs: null, fresh: false, lines: [] }
 }
 
 // Only call_started opens a call. Lines for a call we are not showing (one that
@@ -83,6 +84,7 @@ function reduce(calls: Map<string, Call>, msg: Message): Map<string, Call> {
         from: msg.from_number || call.from,
         startedTs: msg.ts,
         active: true,
+        endedTs: null,
         fresh: true,
       }))
     case 'muse_transcript':
@@ -94,7 +96,7 @@ function reduce(calls: Map<string, Call>, msg: Message): Map<string, Call> {
         putLine(call, `o:${String(msg.turn_id)}`, 'Operator', msg.text, msg.final, msg.ts),
       )
     case 'call_ended':
-      return withCall(calls, msg.call_id, (call) => ({ ...call, active: false }))
+      return withCall(calls, msg.call_id, (call) => ({ ...call, active: false, endedTs: msg.ts ?? Date.now() / 1000 }))
     default:
       return calls
   }
@@ -138,6 +140,17 @@ function useLiveCalls() {
   return { calls, status }
 }
 
+// The first call that connected stays on screen until it has ended and a newer call
+// starts, so the second phone in a live-merge demo never takes over the transcript.
+function pickPrimary(calls: Call[], prevId: string | null): Call | null {
+  const prev = calls.find((call) => call.id === prevId)
+  // Candidates: every call if nothing is shown yet, else only calls that started after it ended
+  const next = prev ? calls.filter((call) => prev.endedTs !== null && call.startedTs > prev.endedTs) : calls
+  const live = next.filter((call) => call.active)
+  if (live.length) return live.reduce((first, call) => (call.startedTs < first.startedTs ? call : first))
+  return prev ?? next.reduce<Call | null>((last, call) => (!last || call.startedTs > last.startedTs ? call : last), null)
+}
+
 function fmtTime(ts: number) {
   return new Date(ts * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
@@ -147,9 +160,9 @@ export function LiveTranscript() {
   const logRef = useRef<HTMLOListElement>(null)
   const nearBottom = useRef(true)
 
-  // The live call if there is one, otherwise the latest call.
-  const all = [...calls.values()].sort((a, b) => b.startedTs - a.startedTs)
-  const call = all.find((item) => item.active) ?? all[0] ?? null
+  const primaryId = useRef<string | null>(null)
+  const call = pickPrimary([...calls.values()], primaryId.current)
+  primaryId.current = call?.id ?? null
   const lastLine = call?.lines.at(-1)
   const onCall = status === 'connected' && !!call?.active
   const statusText =

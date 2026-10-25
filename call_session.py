@@ -360,6 +360,7 @@ class CallSession:
                  send: Callable[[dict], Awaitable[None]], hangup: Callable[[], Awaitable[None]],
                  emit: Callable[[dict], Awaitable[None]] | None = None,
                  on_change: Callable[[CallState], None] | None = None,
+                 on_hold: Callable[[CallSession], None] | None = None,
                  timing: Timing | None = None, label: str | None = None) -> None:
         self.state = state
         self.engine = engine
@@ -370,6 +371,7 @@ class CallSession:
         self._hangup_cb = hangup
         self._emit_cb = emit
         self._on_change_cb = on_change
+        self._on_hold_cb = on_hold
         self.conv = Conversation(state, engine, on_change=self._changed)
         self.player = Player(send, self.timing, self.label)
         self.player.on_idle = self._on_idle
@@ -388,6 +390,8 @@ class CallSession:
         self._op_line = itertools.count(1)
         self.ended = False
         self.hung_up = False
+        self.holding = False                 # waiting in the merge lobby: Aide stays quiet
+        self.merged_with: str | None = None  # call_id of the call this one was merged into
 
     # ---- lifecycle ----------------------------------------------------------
 
@@ -475,6 +479,14 @@ class CallSession:
 
     def _play_fixed(self, key: str, *, end_call: bool = False, interruptible: bool | None = None,
                     opening: bool = False) -> Segment:
+        if key == "closing_now" and end_call and self._on_hold_cb and not self.holding:
+            # They want to talk now: hold the line and let the merge lobby look for someone.
+            log.info("[%s] holding for a live merge", self.label)
+            self.holding = True
+            self._cancel_silence()
+            seg = self._play_fixed("merge_hold", interruptible=False)
+            self._on_hold_cb(self)
+            return seg
         if interruptible is None:
             interruptible = not key.startswith("crisis")
         seg = self._segment(self.player.play("fixed", key=key, text=ALL_FIXED[key],
@@ -482,6 +494,17 @@ class CallSession:
                                              end_call=end_call, opening=opening))
         self._emit({"type": "operator_text", "turn_id": seg.op_id, "text": seg.text, "final": False})
         return seg
+
+    # ---- merge lobby (merge.py) ---------------------------------------------------
+
+    def play_line(self, key: str) -> Segment:
+        """A fixed line the caller can't talk over; await seg.done for when it has played."""
+        return self._play_fixed(key, interruptible=False)
+
+    def close_after_hold(self) -> None:
+        """Nobody turned up: the usual closing, then hang up."""
+        self._play_fixed("closing_now", end_call=True)   # still holding, so it isn't held again
+        self.holding = False
 
     def _play_say(self, u: Utterance, *, interruptible: bool = True) -> Segment:
         return self._segment(self.player.play("say", utterance=u, interruptible=interruptible))
@@ -534,7 +557,7 @@ class CallSession:
 
     def _arm_silence(self) -> None:
         self._cancel_silence()
-        if self.ended or self.hung_up or self._caller_speaking or self.player.busy:
+        if self.ended or self.hung_up or self.holding or self._caller_speaking or self.player.busy:
             return
         if self._active is not None and self._active.winner is None:
             return                     # still waiting on the model; the stall timers cover it
@@ -562,7 +585,7 @@ class CallSession:
         return turn
 
     async def on_muse_event(self, kind: str, turn_id: Any) -> None:
-        if self.ended:
+        if self.ended or self.holding:
             return
         if kind == "speechStart":
             turn = self._turn(turn_id)
@@ -589,7 +612,7 @@ class CallSession:
             turn.final_timer = self._spawn(self._final_fallback(turn), "final-wait")
 
     async def on_transcript(self, turn_id: Any, text: str, final: bool) -> None:
-        if self.ended:
+        if self.ended or self.holding:
             return
         turn = self._turn(turn_id)
         if turn is None:

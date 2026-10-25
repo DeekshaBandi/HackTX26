@@ -24,6 +24,9 @@ For the matching API's packages, once: `cd matching && python3 -m venv .venv && 
 
 On the judge site, the top left is the Snowflake embedding map from the matching API (the caller's dot moves as their profile fills in), and the bottom left is the live transcript from the phone server. The phone app is at http://localhost:8001/app/ and the API docs at http://localhost:8001/docs. Each call is reported to the matching API as `ph_` + the caller number's last 10 digits; set `MATCHING_API_URL=` (empty) in `.env` to turn that off.
 
+## Live merge (two phones)
+A caller who answers "now" (or "either") to the timing question, then confirms their email, hears "Give me just a moment..." and waits in `merge.py`'s lobby for up to `MERGE_HOLD_S` (45 s). If a second caller who wants to talk now is the first one's `live_match` in the matching API (closest student on a call, at or above the threshold), both hear the intro and both calls are moved into one Twilio conference; Aide's stream ends there and the merge is recorded as a `call_merge` match. If nobody turns up, `closing_now` plays ("we'll text you"). "Later" gets `closing_later` and no hold. `MERGE_ANY=1` in `.env` merges any two waiting callers (stage fallback). Matching never re-pairs two students, so between rehearsals run `cd matching && .venv/bin/python reset_demo.py +1<phone A> +1<phone B>`. The judge site stays on the first call that connects; the second caller is handled but not shown.
+
 ## Files
 | File | What it does |
 |---|---|
@@ -31,6 +34,7 @@ On the judge site, the top left is the Snowflake embedding map from the matching
 | `call_session.py` | One call's timing and audio: turn-taking, fillers, slow-model handling, barge-in, silence reminders, crisis lines, hangup, latency log. |
 | `ai_operator/` | The conversation itself, with no audio code (so `chat_test.py` runs the same logic). `conversation.py` per-call turn logic, `planner.py` phases and turn goals, `prompts.py` system prompt and fixed lines, `brain.py` the Spark reply engine, `safety.py` crisis tripwire and yes/no readers, `state.py` the call record. |
 | `tts.py` | ElevenLabs Flash over one warm multi-context WebSocket per call; fixed-line cache in `tts_cache/`. |
+| `merge.py` | The live-merge lobby: holds "now" callers, checks the pair with the matching API, plays the intro, redirects both calls into a conference, reports it. `--selftest` runs offline checks. |
 | `matching_client.py` | Reports each call to the matching API in the background: `/call/start` on connect, `/call/turn` whenever the profile changes (newest only), `/call/record` at the end (without the transcript). Never holds up the call. |
 | `muse_client.py` | `MuseStream`: one Muse realtime session (handshake, audio sender, turn events, endStream, close codes). |
 | `dashboard.html` | Dashboard (served at `/` by server.py): "You:" / "Operator:" lines, profile panel, Download JSON. Reconnects automatically. |

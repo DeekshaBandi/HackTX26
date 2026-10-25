@@ -350,6 +350,9 @@ def ingest_call(record):
     result["delivered"] = None
     best = result.get("best")
     col = "embedding_sf" if result.get("embedder") == "snowflake" else "embedding"
+    # Merged into a live call with someone: that match is already recorded (deliver, method call_merge)
+    if record.get("merged_with"):
+        best = None
     if result.get("crisis") in (None, "none") and best and best["score"] >= THRESHOLDS[col]:
         from deliver import deliver  # imported here to avoid a circular import
         result["delivered"] = deliver(sid, best["student_id"], best["score"], call_id=call_id, method="in_app")

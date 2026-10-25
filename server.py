@@ -43,6 +43,7 @@ from ai_operator.prompts import ALL_FIXED
 from ai_operator.state import IDENTITY_FIELDS, CallState
 from call_session import CallSession
 from matching_client import MatchingReporter, api_url as matching_api_url
+from merge import MergeLobby, hold_seconds as merge_hold_seconds, merge_any
 from muse_client import MuseStream
 from tts import ElevenLabsTTS, FixedAudio
 
@@ -318,6 +319,15 @@ def snapshot() -> dict[str, Any]:
     }
 
 
+def redirect_call(call_sid: str, twiml: str) -> None:
+    """Blocking (Twilio SDK). Replaces the call's TwiML, which ends its media stream."""
+    TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN).calls(call_sid).update(twiml=twiml)
+
+
+# Callers who said "now" wait here for someone similar to merge with (merge.py).
+lobby = MergeLobby(redirect_call, broadcast)
+
+
 # ---- Startup: point the Twilio number at us ---------------------------------
 
 def configure_twilio_webhook() -> None:
@@ -373,6 +383,8 @@ async def lifespan(app: FastAPI):
             log.warning(line)
         log.info("Dashboard:     http://localhost:%d/", PORT)
     log.info("Matching API:  %s", matching_api_url() or "off (MATCHING_API_URL is empty)")
+    log.info("Live merge:    hold up to %.0f s%s", merge_hold_seconds(),
+             ", MERGE_ANY=1 (any two waiting callers)" if merge_any() else "")
     log.info("Loaded %d saved call records (%d returning callers known)", load_records(), len(known_callers))
     t0 = time.monotonic()
     counts, _ = await asyncio.gather(fixed_audio.build(), asyncio.to_thread(configure_twilio_webhook))
@@ -473,7 +485,8 @@ async def twilio_audio(ws: WebSocket) -> None:
                     new_call_state(call_id, from_number),
                     engine=SparkCombinedEngine(), tts=ElevenLabsTTS(label=short(call_id)),
                     fixed=fixed_audio, send=make_twilio_sender(ws), hangup=ws.close,
-                    emit=emit_operator, on_change=on_change, label=short(call_id))
+                    emit=emit_operator, on_change=on_change,
+                    on_hold=lambda s, matching=matching: lobby.join(s, matching), label=short(call_id))
                 sessions[call_id] = session
                 dashboard_handler = make_transcript_handler(call_id)
 
@@ -498,7 +511,9 @@ async def twilio_audio(ws: WebSocket) -> None:
             else:
                 log.debug("Twilio event ignored: %s", event)
     except (WebSocketDisconnect, WebSocketDisconnected):
-        if session is not None and session.hung_up:
+        if session is not None and session.merged_with:
+            log.info("[%s] Twilio media WebSocket closed: call moved into the merge conference", short(call_id))
+        elif session is not None and session.hung_up:
             log.info("[%s] Twilio media WebSocket closed by Aide (call ending)", short(call_id))
         else:
             log.info("[%s] Twilio media WebSocket disconnected", short(call_id))
@@ -507,6 +522,8 @@ async def twilio_audio(ws: WebSocket) -> None:
     finally:
         if muse is not None:
             muse.finish()  # endStream; the session flushes and closes on its own task
+        if call_id:
+            lobby.leave(call_id)
         if session is not None:
             await session.end()
             try:
@@ -514,7 +531,7 @@ async def twilio_audio(ws: WebSocket) -> None:
             except Exception:
                 log.exception("[%s] Could not save the call record", short(call_id))
             if matching is not None:
-                matching.finish(session.state.export())
+                matching.finish({**session.state.export(), "merged_with": session.merged_with})
         if call_id:
             await call_ended(call_id)
 

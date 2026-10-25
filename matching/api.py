@@ -120,6 +120,7 @@ class Deliver(BaseModel):
     other_call_id: Optional[str] = None
     method: str = "in_app"           # in_app | sms | call_merge
     intro_text: Optional[str] = None
+    room: Optional[str] = None       # call_merge the phone server already did (its conference room)
 
 
 DEMO_REPLY_RETRY_WAITS = [1, 2]   # seconds between demo reply tries (3 tries in all)
@@ -176,7 +177,7 @@ def call_end(req: EndCall):
 def deliver_match(req: Deliver):
     return delivery.deliver(req.student_a, req.student_b, req.score, call_id=req.call_id,
                             method=req.method, intro_text=req.intro_text,
-                            other_call_id=req.other_call_id)
+                            other_call_id=req.other_call_id, room=req.room)
 
 
 # ---------- students (Nathan + Person 4) ----------

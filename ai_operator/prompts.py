@@ -49,13 +49,19 @@ Fields
   partner_traits: the full current list of short phrases for qualities they want in the other student, in their words, like "high achiever", "understands grade pressure", "good listener".
   ai_use: how often they talk to AI chatbots and about what, a few words.
   interests: the full current list of one to three hobbies or interests they mention, like ["basketball"].
-  timing: when they want to talk to someone: {", ".join(ENUMS["timing"])}.
+  timing: when they want to talk to someone: {", ".join(ENUMS["timing"])}. They were asked a yes/no question about talking right now: yes means "now", no means "later".
 - confidence: 0 to 1, how sure you are overall, across the whole call, about situation, themes, stage, and wants.
 - summary: null unless you learned something new this turn. Otherwise rewrite the whole summary in two to four plain sentences, always in this order: what they're going through; how long; how they use AI chatbots; what they want from a person, including the qualities they want in them. Skip any part you don't know yet, and leave out interests. Never include their name, school, year, major, or email, and don't use pronouns: write "Moved from Ohio and feels lonely.", not "She moved...".
 - move: only if the goal offered an alternative "(move X)" and you took it, that X; otherwise empty.
 - crisis: "concern" if they hint at hopelessness, self-harm, or not wanting to be here. "urgent" if they say they are thinking about suicide or hurting themselves, have a plan, or are in danger now. Otherwise "none". reason: a few words."""
 
 # Asked once, at the very end, after TIMING. Cached audio.
+# Asked after the reflection. A yes/no question (yes = now, no = later), ending on the
+# question so a "yeah" said over its end counts as the answer (call_session.final_question).
+# "Now" alone was misheard as "no", so the caller answers yes or no instead.
+TIMING_LINE = ("I can connect you with someone right now, or text you later with the next "
+               "available match. Do you want to speak to someone right now?")
+
 EMAIL_LINE = ("Last thing, just so we can confirm you're a student, "
               "what's your email before the at sign?")
 
@@ -226,7 +232,18 @@ FIXED_LINES: dict[str, str] = {
         "Thank you for sharing all of that. AIEDH will look for a student who gets what "
         "you're going through, and reach out. Take care tonight."
     ),
-    # Timing "now" or "either". Nobody is checked for availability yet; live merging comes later.
+    # Live merge (merge.py). Timing "now" or "either": hold while we look for someone on the line.
+    "merge_hold": (
+        "Give me just a moment. I'm checking whether someone who gets what you're going through "
+        "is on the line right now."
+    ),
+    "merge_still": "Still looking, hang tight.",
+    "merge_intro": (
+        "Good news. Another student just called in who's going through something really similar, "
+        "and they want to talk now too. I'm connecting you two, and then I'll step out. "
+        "Take care of each other."
+    ),
+    # Timing "now" or "either", when nobody turned up during the hold (or merging is off).
     "closing_now": (
         "Thank you for sharing all of that. We're so sorry, we don't have a match for you on the line "
         "right now. We'll keep you on file, and as soon as we find your match, we'll text you and start "

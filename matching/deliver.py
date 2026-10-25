@@ -13,6 +13,8 @@ Methods:
                 are moved into one private conference room. Replacing each call's
                 instructions cuts off the AI's audio stream, so the AI is gone.
                 call_id / other_call_id must be Twilio Call SIDs (they start with "CA").
+                If room is given, the phone server (merge.py) already merged the calls,
+                so this only records the match and opens the chat.
 
 intro_text: Person 2's AI writes the real intro. If none is passed, a simple template is used.
 
@@ -112,7 +114,7 @@ def merge_calls(call_sid_a, call_sid_b, intro):
 
 
 def deliver(student_a, student_b, score, call_id=None, method="in_app",
-            intro_text=None, other_call_id=None):
+            intro_text=None, other_call_id=None, room=None):
     """
     Connect two students. Always creates the in-app chat (so there's a record and a
     place to keep talking), then adds SMS or a call merge on top if asked.
@@ -126,6 +128,8 @@ def deliver(student_a, student_b, score, call_id=None, method="in_app",
     try:
         if method == "sms":
             result["sms_sids"] = send_sms([a, b], intro)
+        elif method == "call_merge" and room:
+            result["room"] = room
         elif method == "call_merge":
             if not (call_id and other_call_id):
                 raise ValueError("call_merge needs both Twilio Call SIDs (call_id and other_call_id)")

@@ -20,8 +20,8 @@ from __future__ import annotations
 import dataclasses
 import re
 
-from .prompts import EMAIL_LINE, THEME_PROBES
-from .safety import tripwire
+from .prompts import EMAIL_LINE, THEME_PROBES, TIMING_LINE
+from .safety import is_no, is_yes, tripwire
 from .state import CallState, Phase
 
 MAX_ATTEMPTS = 2           # asks per field, then move on
@@ -57,7 +57,7 @@ ASK = {
     "major": "Ask what they're studying.",
     "email": f'Ask exactly this: "{EMAIL_LINE}"',
     "situation": "Ask what made them call tonight.",
-    "timing": "Ask whether they'd like to talk to someone now, later, or either is fine.",
+    "timing": f'Ask exactly this: "{TIMING_LINE}"',
 }
 
 # A second try at a field: a concrete follow-up, never the same question again.
@@ -68,7 +68,7 @@ CONCRETE = {
     "year": "Ask simply: are they a freshman, sophomore, junior, senior, or in grad school?",
     "major": "Ask simply what they're studying, or planning to.",
     "situation": "Offer a concrete either-or, like whether it's more school stuff or people stuff.",
-    "timing": "Ask simply: would right now work, or would later be better?",
+    "timing": 'Ask simply, as a yes or no: "Do you want to talk to someone right now?"',
 }
 
 LABEL = {
@@ -475,6 +475,7 @@ def move_goal(state: CallState, move: str) -> str:
     return goal + _wrap_clause(state, move)
 
 
+_LATER_RE = re.compile(r"\b(later|tomorrow|text( me)?|another (day|time)|not (right )?now)\b", re.I)
 _TIMING_WORDS = [
     ("now", re.compile(r"\b(right now|now|tonight|asap|as soon as)\b", re.I)),
     ("later", re.compile(r"\b(later|tomorrow|another (day|time)|this week|next week|weekend)\b", re.I)),
@@ -483,7 +484,14 @@ _TIMING_WORDS = [
 
 
 def timing_from_text(text: str) -> str | None:
-    """Keyword read of the TIMING answer, so the next line needs no model call."""
+    """Read of the TIMING answer, so the next line needs no model call. The question is
+    yes/no ("Do you want to speak to someone right now?"): yes is now, no is later.
+    "Later" or "text" wins over a yes ("sure, text me later"), and a no wins over "now"
+    ("no, not right now")."""
+    if _LATER_RE.search(text or "") or is_no(text):
+        return "later"
+    if is_yes(text):
+        return "now"
     hits = [value for value, rx in _TIMING_WORDS if rx.search(text or "")]
     if "either" in hits or len(hits) > 1:
         return "either"

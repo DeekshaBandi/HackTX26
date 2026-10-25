@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, type ApiStudent, type CallEvent, type Nearby, type Pair, type StudentMatch } from './api.ts'
 
 /** How far back to look for live calls, and how often to ask. */
@@ -33,6 +33,20 @@ function groupCalls(events: CallEvent[]): LiveCall[] {
     if (event.event === 'call_ended') call.ended = true
   }
   return [...calls.values()].sort((a, b) => b.lastAt.localeCompare(a.lastAt))
+}
+
+/**
+ * The call to show: the first one that connects. It stays until it has ended and a new call
+ * starts after that, so a second caller (the live-merge partner) never takes over the view.
+ */
+function pickPrimary(calls: LiveCall[], prevKey: string | null): LiveCall | null {
+  const prev = calls.find((call) => call.key === prevKey)
+  // Candidates: every call if nothing is shown yet, else only calls that started after it ended
+  const next = prev ? calls.filter((call) => prev.ended && call.startedAt > prev.lastAt) : calls
+  const live = next.filter((call) => !call.ended)
+  if (live.length) return live.reduce((first, call) => (call.startedAt < first.startedAt ? call : first))
+  // calls is newest first, so next[0] is the latest finished call
+  return prev ?? next[0] ?? null
 }
 
 /** ?student=ID in the page URL pins the view to one student instead of the latest call. */
@@ -124,8 +138,11 @@ export function useJudgeData(): JudgeData {
     }
   }, [callCount])
 
-  // Follow the newest call unless the judge picked one
-  const call = calls.find((item) => item.key === chosenKey) ?? calls[0] ?? null
+  // Follow the first call that connected (see pickPrimary) unless the judge picked one
+  const primaryKey = useRef<string | null>(null)
+  const primary = pickPrimary(calls, primaryKey.current)
+  primaryKey.current = primary?.key ?? null
+  const call = calls.find((item) => item.key === chosenKey) ?? primary
   const callerId = call?.studentId ?? pinned
   // Refetch the caller whenever their call logs something new (profile change, match, hang-up)
   const version = call ? `${call.key}:${call.events.length}` : pinned ?? ''

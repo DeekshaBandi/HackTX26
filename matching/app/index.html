@@ -268,6 +268,7 @@ button{font-family:inherit}
   <div id="typing" class="muted hidden" style="padding:0 20px 6px;font-size:14px;display:flex;align-items:center;gap:8px">
     <span style="display:flex;gap:4px" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span><span id="typingName"></span> is typing
   </div>
+  <p id="sendErr" class="hidden" role="alert" style="margin:0;padding:0 20px 6px;font-size:14px;color:var(--text)">Couldn’t send. Tap Send to try again.</p>
   <form id="composer" style="padding:10px 12px calc(14px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:8px;border-top:1px solid var(--line)">
     <label for="msg" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Message</label>
     <input id="msg" type="text" placeholder="Message" autocomplete="off" style="flex:1;height:46px;padding:0 18px;border-radius:23px;border:1.5px solid var(--field-line);background:var(--field);color:var(--text);font:inherit;font-size:16px">
@@ -310,9 +311,13 @@ const store = {
 };
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 async function api(path, opts){
-  const r = await fetch(API + path, opts);
-  if (!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || r.status);
-  return r.json();
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const r = await fetch(API + path, Object.assign({}, opts, { signal: ctl.signal }));
+    if (!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || r.status);
+    return await r.json();
+  } finally { clearTimeout(timer); }
 }
 function fmtPhone(d){ d = d.slice(-10); return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`; }
 function cap(s){ s = String(s||""); return s.charAt(0).toUpperCase() + s.slice(1); }
@@ -348,7 +353,9 @@ let phone = store.get("aiedh_phone");
 let email = store.get("aiedh_email");
 let status = null;                            // last /app/status response
 let lastState = store.get("aiedh_last_state");
-let chat = null, lastMsgId = 0, chatTimer = null, waitingReply = false;
+let chat = null, lastMsgId = 0, chatTimer = null, waitingReply = false, typingSince = 0, chatPolling = false;
+const REQUEST_TIMEOUT_MS = 10000;   // a stalled request gives up so the next poll can try again
+const TYPING_MAX_MS = 25000;        // hide "is typing" if no reply comes
 const myId = () => `ph_${phone.slice(-10)}`;
 
 /* ---------- routing ---------- */
@@ -537,26 +544,39 @@ function resourceCards(res){
 }
 
 /* ---------- 5. chat ---------- */
-async function openChat(chatId){
+function openChat(chatId){
   show("chat");
   if (!chat || chat.chat_id !== chatId) {
-    chat = null;
-    try { chat = (await api(`/app/matches?phone=${encodeURIComponent(phone)}`)).find(m => m.chat_id === chatId); } catch(e){}
-    chat = chat || { chat_id: chatId, name: "Your match", school: "" };
+    // Messages and Send only need the chat id, so don't wait on /app/matches for them
+    chat = { chat_id: chatId, name: "Your match", school: "" };
     $("thread").innerHTML = ""; lastMsgId = 0; waitingReply = false;
+    $("sendErr").classList.add("hidden");
+    api(`/app/matches?phone=${encodeURIComponent(phone)}`).then((rows) => {
+      const found = rows.find(m => m.chat_id === chatId);
+      if (found && chat && chat.chat_id === chatId) { chat = found; renderChatHead(); }
+    }).catch(() => {});
   }
+  renderChatHead();
+  pollChat();
+  clearInterval(chatTimer);
+  chatTimer = setInterval(pollChat, 2000);
+}
+function renderChatHead(){
   $("cAvatar").innerHTML = avatarSVG(chat.name);
   $("cName").innerHTML = esc(chat.name) + (chat.demo_student ? ` <span class="pill sm">demo student</span>` : "");
   $("cSchool").textContent = chat.school || "";
   $("msg").placeholder = `Message ${chat.name}`;
   $("typingName").textContent = chat.name;
-  pollChat();
-  chatTimer = setInterval(pollChat, 2000);
 }
 async function pollChat(){
-  if (!chat) return;
+  if (!chat || chatPolling) return;   // one request at a time, even if the API is slow
+  chatPolling = true;
   let msgs;
-  try { msgs = await api(`/chats/${chat.chat_id}/messages?after_id=${lastMsgId}`); } catch(e){ return; }
+  try { msgs = await api(`/chats/${chat.chat_id}/messages?after_id=${lastMsgId}`); }
+  catch(e){ msgs = null; }
+  finally { chatPolling = false; }
+  if (waitingReply && Date.now() - typingSince > TYPING_MAX_MS) waitingReply = false;
+  if (!msgs) { $("typing").classList.toggle("hidden", !waitingReply); return; }
   const box = $("thread");
   for (const m of msgs) {
     if (m.id <= lastMsgId) continue;   // never show a message twice
@@ -590,14 +610,18 @@ $("composer").addEventListener("submit", async (e) => {
   const body = $("msg").value.trim();
   if (!body || !chat) return;
   $("msg").value = "";
+  $("sendErr").classList.add("hidden");
   try {
     await api(`/chats/${chat.chat_id}/messages`, {
       method: "POST", headers: {"Content-Type":"application/json"},
       body: JSON.stringify({ sender_id: myId(), body }),
     });
-    if (chat.demo_student) waitingReply = true;
+    if (chat.demo_student) { waitingReply = true; typingSince = Date.now(); }
     pollChat();
-  } catch(err){ $("msg").value = body; }
+  } catch(err){
+    if (!$("msg").value) $("msg").value = body;   // keep what they typed
+    $("sendErr").classList.remove("hidden");
+  }
 });
 
 /* ---------- 6. matches ---------- */

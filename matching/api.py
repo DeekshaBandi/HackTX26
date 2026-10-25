@@ -122,6 +122,9 @@ class Deliver(BaseModel):
     intro_text: Optional[str] = None
 
 
+DEMO_REPLY_RETRY_WAITS = [1, 2]   # seconds between demo reply tries (3 tries in all)
+
+
 class ChatMessage(BaseModel):
     sender_id: str
     body: str
@@ -502,11 +505,19 @@ def chat_send(chat_id: str, msg: ChatMessage):
         import threading
 
         def reply():
-            try:
-                time.sleep(2)  # feels more human than an instant answer
-                delivery.demo_reply(chat_id, other)
-            except Exception as e:
-                print("demo reply failed:", str(e).splitlines()[0])
+            time.sleep(2)  # feels more human than an instant answer
+            # Gemini sometimes drops the connection mid-call, so try a few times before giving up
+            for attempt, wait in enumerate(DEMO_REPLY_RETRY_WAITS + [None], start=1):
+                try:
+                    delivery.demo_reply(chat_id, other)
+                    return
+                except Exception as e:
+                    msg = str(e).splitlines()[0] if str(e) else type(e).__name__
+                    if wait is None:
+                        print(f"demo reply failed after {attempt} tries:", msg)
+                        return
+                    print(f"demo reply try {attempt} failed, retrying in {wait}s:", msg)
+                    time.sleep(wait)
         threading.Thread(target=reply, daemon=True).start()
     return {"ok": True}
 

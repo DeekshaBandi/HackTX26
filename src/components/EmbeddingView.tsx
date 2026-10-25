@@ -1,14 +1,26 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Html, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
-import { AXES, TOKENS, axisById, type CallToken } from '../data/call.ts'
+import type { ApiStudent, Pair, Xyz } from '../lib/api.ts'
 import { makeMapTexture, personTexture } from '../lib/draw.ts'
 
 type Props = {
-  revealedLines: number
+  students: ApiStudent[]
+  caller: ApiStudent | null
+  nearIds: string[]
+  pairs: Pair[]
+  /** Students the SerpApi count reaches. Everyone else is faded. null shows everyone. */
+  reachIds: Set<string> | null
+  themeColor: (theme: string | null) => string
   selectedId: string | null
   onSelect: (id: string | null) => void
+}
+
+/** xyz from the API is roughly -1.2 to 1.2 on each axis. Spread it over the map, y as height. */
+const SPREAD = 44
+function toWorld(xyz: Xyz): THREE.Vector3 {
+  return new THREE.Vector3(xyz[0] * SPREAD, 3 + (xyz[1] + 1.2) * 9, xyz[2] * SPREAD)
 }
 
 function MapGround() {
@@ -22,183 +34,161 @@ function MapGround() {
   )
 }
 
-function YouPin() {
-  const tex = useMemo(() => personTexture('#1a73e8'), [])
-  const ring = useRef<THREE.Mesh>(null)
-  useFrame(() => {
-    if (!ring.current) return
-    const s = 1 + Math.sin(performance.now() / 420) * 0.05
-    ring.current.scale.set(s, s, 1)
-  })
-  return (
-    <group position={[0, 2.2, 0]}>
-      <mesh ref={ring} rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.5, 0]}>
-        <ringGeometry args={[5.4, 6.1, 48]} />
-        <meshBasicMaterial color="#1a73e8" transparent opacity={0.85} side={THREE.DoubleSide} />
-      </mesh>
-      <sprite scale={[9, 9, 1]} position={[0, 1.2, 0]}>
-        <spriteMaterial map={tex} transparent depthWrite={false} />
-      </sprite>
-      <Html center position={[0, -1.2, 5]} zIndexRange={[12, 0]} style={{ pointerEvents: 'none' }}>
-        <div className="you-label">YOU</div>
-      </Html>
-    </group>
-  )
-}
+/** Every student as one dot, colored by theme. One draw call for all of them. */
+function Dots({ students, nearIds, reachIds, themeColor, selectedId, onSelect }: Omit<Props, 'caller' | 'pairs'>) {
+  const mesh = useRef<THREE.InstancedMesh>(null)
+  const placed = useMemo(() => students.filter((row) => row.xyz), [students])
+  const near = useMemo(() => new Set(nearIds), [nearIds])
 
-function Districts({ revealedLines, onSelect }: { revealedLines: number; onSelect: (id: string) => void }) {
+  useLayoutEffect(() => {
+    const target = mesh.current
+    if (!target) return
+    const m = new THREE.Matrix4()
+    const color = new THREE.Color()
+    placed.forEach((row, i) => {
+      const at = toWorld(row.xyz!)
+      const s = row.student_id === selectedId ? 2.1 : near.has(row.student_id) ? 1.6 : row.is_synthetic ? 0.75 : 1.3
+      m.makeScale(s, s, s).setPosition(at)
+      target.setMatrixAt(i, m)
+      const hot = near.has(row.student_id) || row.student_id === selectedId
+      const faded = reachIds != null && !reachIds.has(row.student_id)
+      target.setColorAt(i, color.set(hot ? '#9a3412' : faded ? '#dccfbd' : themeColor(row.theme)))
+    })
+    target.count = placed.length
+    target.instanceMatrix.needsUpdate = true
+    if (target.instanceColor) target.instanceColor.needsUpdate = true
+  }, [placed, near, reachIds, themeColor, selectedId])
+
+  const selected = placed.find((row) => row.student_id === selectedId)
+
   return (
     <>
-      {AXES.map((axis) => {
-        const token = TOKENS.find((item) => item.axis === axis.id)
-        return (
-          <group key={axis.id} position={axis.position}>
-            <mesh
-              rotation={[-Math.PI / 2, 0, 0]}
-              position={[0, 0.05, 0]}
-              onClick={(event) => {
-                event.stopPropagation()
-                if (token && token.line < revealedLines) onSelect(token.id)
-              }}
-            >
-              <circleGeometry args={[5.4, 48]} />
-              <meshBasicMaterial color={axis.disc} />
-            </mesh>
-          </group>
-        )
-      })}
+      <instancedMesh
+        ref={mesh}
+        args={[undefined, undefined, Math.max(placed.length, 1)]}
+        onClick={(event) => {
+          event.stopPropagation()
+          const row = event.instanceId != null ? placed[event.instanceId] : null
+          if (row) onSelect(row.student_id)
+        }}
+        onPointerOver={() => {
+          document.body.style.cursor = 'pointer'
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = ''
+        }}
+      >
+        <sphereGeometry args={[0.55, 10, 10]} />
+        <meshBasicMaterial />
+      </instancedMesh>
+      {selected && (
+        <Html center position={toWorld(selected.xyz!).add(new THREE.Vector3(0, 2.6, 0))} zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
+          <div className="phrase-label on">
+            <small>{selected.theme ?? 'No theme'}</small>
+            {selected.situation ?? 'No situation on the record'}
+          </div>
+        </Html>
+      )}
     </>
   )
 }
 
-function FlyingPhrase({
-  token,
-  settled,
-  selected,
-  onSelect,
-}: {
-  token: CallToken
-  settled: boolean
-  selected: boolean
-  onSelect: (id: string) => void
-}) {
-  const group = useRef<THREE.Group>(null)
-  const shaft = useRef<THREE.Mesh>(null)
-  const head = useRef<THREE.Mesh>(null)
-  const progress = useRef(settled ? 1 : 0)
-  const axis = axisById(token.axis)
-  const labelOffset = useMemo(() => {
-    const len = Math.hypot(axis.position[0], axis.position[2]) || 1
-    return [(axis.position[0] / len) * 3.2, 2.2, (axis.position[2] / len) * 3.2] as const
-  }, [axis.position])
-  const start = useMemo(() => new THREE.Vector3(0, 2.6, 0), [])
-  const end = useMemo(
-    () => new THREE.Vector3(axis.position[0], 2.6, axis.position[2]),
-    [axis.position],
+function Segments({ points, color, opacity }: { points: THREE.Vector3[]; color: string; opacity: number }) {
+  const geometry = useMemo(() => new THREE.BufferGeometry().setFromPoints(points), [points])
+  useEffect(() => () => geometry.dispose(), [geometry])
+  return (
+    <lineSegments geometry={geometry}>
+      <lineBasicMaterial color={color} transparent opacity={opacity} />
+    </lineSegments>
   )
-  const up = useMemo(() => new THREE.Vector3(0, 1, 0), [])
-  const dir = useMemo(() => new THREE.Vector3(), [])
+}
+
+/** Faint lines between every pair matching has connected (GET /pairs). */
+function PairLines({ students, pairs }: { students: ApiStudent[]; pairs: Pair[] }) {
+  const points = useMemo(() => {
+    const at = new Map(students.filter((row) => row.xyz).map((row) => [row.student_id, toWorld(row.xyz!)]))
+    const out: THREE.Vector3[] = []
+    for (const pair of pairs) {
+      const a = at.get(pair.a)
+      const b = at.get(pair.b)
+      if (a && b) out.push(a, b)
+    }
+    return out
+  }, [students, pairs])
+  return points.length > 0 ? <Segments points={points} color="#6f6256" opacity={0.35} /> : null
+}
+
+/** The caller's pin. It flies from the center to where their embedding lands, then lines reach its nearest students. */
+function Caller({ caller, students, nearIds }: { caller: ApiStudent; students: ApiStudent[]; nearIds: string[] }) {
+  const tex = useMemo(() => personTexture('#1a73e8'), [])
+  useEffect(() => () => tex.dispose(), [tex])
+  const group = useRef<THREE.Group>(null)
+  const ring = useRef<THREE.Mesh>(null)
+  const target = useMemo(() => (caller.xyz ? toWorld(caller.xyz) : new THREE.Vector3(0, 3, 0)), [caller.xyz])
+  const from = useRef(new THREE.Vector3(0, 3, 0))
+  const progress = useRef(0)
+
+  useEffect(() => {
+    if (group.current) from.current.copy(group.current.position)
+    progress.current = 0
+  }, [target])
 
   useFrame((_, dt) => {
-    if (settled) progress.current = 1
-    else progress.current = Math.min(1, progress.current + dt / 1.15)
-
+    progress.current = Math.min(1, progress.current + dt / 1.4)
     const t = progress.current
     const eased = t * t * (3 - 2 * t)
-    const tokenGroup = group.current
-    const shaftMesh = shaft.current
-    const headMesh = head.current
-    if (!tokenGroup || !shaftMesh || !headMesh) return
-
-    tokenGroup.position.lerpVectors(start, end, eased)
-    if (eased > 0.995) {
-      tokenGroup.position.y = end.y + Math.sin(performance.now() / 700 + end.x) * 0.12
+    group.current?.position.lerpVectors(from.current, target, eased)
+    if (ring.current) {
+      const s = 1 + Math.sin(performance.now() / 420) * 0.05
+      ring.current.scale.set(s, s, 1)
     }
-
-    dir.set(tokenGroup.position.x, 0, tokenGroup.position.z)
-    const length = dir.length()
-    if (length < 8) {
-      shaftMesh.visible = false
-      headMesh.visible = false
-      return
-    }
-    shaftMesh.visible = true
-    headMesh.visible = true
-    dir.multiplyScalar(1 / length)
-    const startDist = 6.5
-    const endDist = Math.max(startDist + 0.2, length - 1.8)
-    const shaftLen = endDist - startDist
-    shaftMesh.position.set(dir.x * (startDist + shaftLen / 2), 2.2, dir.z * (startDist + shaftLen / 2))
-    shaftMesh.scale.set(1, shaftLen, 1)
-    shaftMesh.quaternion.setFromUnitVectors(up, dir)
-    headMesh.position.set(dir.x * endDist, 2.2, dir.z * endDist)
-    headMesh.quaternion.copy(shaftMesh.quaternion)
-    const material = shaftMesh.material as THREE.MeshBasicMaterial
-    material.opacity = selected ? 0.95 : 0.72
   })
+
+  const lines = useMemo(() => {
+    const at = new Map(students.filter((row) => row.xyz).map((row) => [row.student_id, toWorld(row.xyz!)]))
+    const out: THREE.Vector3[] = []
+    for (const id of nearIds) {
+      const end = at.get(id)
+      if (end) out.push(target, end)
+    }
+    return out
+  }, [students, nearIds, target])
 
   return (
     <>
-      <mesh ref={shaft}>
-        <cylinderGeometry args={[0.16, 0.16, 1, 8]} />
-        <meshBasicMaterial color={selected ? '#9a3412' : '#b4633a'} transparent opacity={0.75} />
-      </mesh>
-      <mesh ref={head}>
-        <coneGeometry args={[0.62, 1.8, 8]} />
-        <meshBasicMaterial color={selected ? '#9a3412' : '#b4633a'} />
-      </mesh>
-      <group ref={group}>
-        <mesh
-          scale={selected ? 1.35 : 1}
-          onClick={(event) => {
-            event.stopPropagation()
-            onSelect(token.id)
-          }}
-          onPointerOver={() => {
-            document.body.style.cursor = 'pointer'
-          }}
-          onPointerOut={() => {
-            document.body.style.cursor = ''
-          }}
-        >
-          <sphereGeometry args={[1.25, 24, 24]} />
-          <meshBasicMaterial color={selected ? '#9a3412' : axis.ink} />
+      {lines.length > 0 && <Segments points={lines} color="#9a4e24" opacity={0.7} />}
+      <group ref={group} position={[0, 3, 0]}>
+        <mesh ref={ring} rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.2, 0]}>
+          <ringGeometry args={[3.2, 3.7, 48]} />
+          <meshBasicMaterial color="#1a73e8" transparent opacity={0.85} side={THREE.DoubleSide} />
         </mesh>
-        <Html center position={labelOffset} zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
-          <div className={selected ? 'phrase-label on' : 'phrase-label'}>
-            <small>{axis.label}</small>
-            {token.quote}
-          </div>
+        <sprite scale={[6, 6, 1]} position={[0, 1.2, 0]}>
+          <spriteMaterial map={tex} transparent depthWrite={false} />
+        </sprite>
+        <Html center position={[0, -1, 3.5]} zIndexRange={[12, 0]} style={{ pointerEvents: 'none' }}>
+          <div className="you-label">YOU</div>
         </Html>
       </group>
     </>
   )
 }
 
-function Scene({ revealedLines, selectedId, onSelect }: Props) {
-  const visible = TOKENS.filter((token) => token.line < revealedLines)
+function Scene(props: Props) {
+  const { students, caller, nearIds, pairs } = props
   return (
     <>
       <color attach="background" args={['#efe2cf']} />
       <MapGround />
-      <YouPin />
-      <Districts revealedLines={revealedLines} onSelect={onSelect} />
-      {visible.map((token) => (
-        <FlyingPhrase
-          key={token.id}
-          token={token}
-          settled={token.line < revealedLines - 1}
-          selected={token.id === selectedId}
-          onSelect={onSelect}
-        />
-      ))}
+      <PairLines students={students} pairs={pairs} />
+      <Dots {...props} />
+      {caller && <Caller caller={caller} students={students} nearIds={nearIds} />}
       <OrbitControls
         enablePan={false}
         minDistance={28}
-        maxDistance={120}
-        maxPolarAngle={1.2}
-        minPolarAngle={0.3}
-        target={[0, 0, 0]}
+        maxDistance={140}
+        maxPolarAngle={1.25}
+        minPolarAngle={0.2}
+        target={[0, 6, 0]}
       />
     </>
   )
@@ -213,7 +203,7 @@ export function EmbeddingView(props: Props) {
       }}
     >
       <Canvas
-        camera={{ position: [0, 34, 64], fov: 42 }}
+        camera={{ position: [0, 60, 84], fov: 42 }}
         dpr={[1, 2]}
         gl={{ antialias: true }}
         onPointerMissed={() => props.onSelect(null)}

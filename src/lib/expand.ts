@@ -1,25 +1,17 @@
-import { recordText, ROSTER, type RosterStudent } from '../data/roster.ts'
-
-/** The caller stopped mid-word. Autocomplete is for that tail, not a finished sentence. */
-export const CALL_QUERY = "I've been in computer science and I keep bombing the data struc"
-export const UNFINISHED_TAIL = 'struc'
+import type { ApiStudent } from './api.ts'
 
 export type SearchPhrase = {
   text: string
   source: string
 }
 
+/** The words on a student's record that expansion can find. Name and school are never part of it. */
+export function recordText(row: ApiStudent): string {
+  return [row.major, row.situation, row.theme, row.interests, row.stage, row.year].filter(Boolean).join(' ').toLowerCase()
+}
+
 function hasWord(text: string, word: string): boolean {
-  return new RegExp(`\\b${word}\\b`, 'i').test(text)
-}
-
-/** What they actually got out. "struc" is unfinished, so it does not match "structures". */
-export function literalMatch(text: string): boolean {
-  return text.includes('computer science') || hasWord(text, 'bombing') || hasWord(text, 'struc') || hasWord(text, 'data')
-}
-
-export function phraseHits(text: string, phrases: string[]): string[] {
-  return phrases.filter((phrase) => text.includes(phrase))
+  return new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text)
 }
 
 export type ExamplePhrase = {
@@ -35,15 +27,19 @@ export type ExpansionReport = {
   added: number
   examples: ExamplePhrase[]
   wordHits: { text: string; hits: number }[]
+  /** Students found by the caller's own words, and by their words plus the SerpApi phrases */
+  literalIds: Set<string>
+  expandedIds: Set<string>
 }
 
 const STOP_WORDS = new Set([
   'what', 'when', 'where', 'which', 'have', 'high', 'this', 'that', 'with', 'from',
   'your', 'about', 'into', 'over', 'just', 'like', 'does', 'will', 'been', 'they',
-  'them', 'than', 'then', 'also', 'only', 'some', 'more', 'most', 'very',
+  'them', 'than', 'then', 'also', 'only', 'some', 'more', 'most', 'very', 'feel',
+  'feeling', 'college', 'student', 'students', 'really', 'still', 'being',
 ])
 
-/** Words inside the live phrases. The whole suggestion often is not in the student file. */
+/** Words inside the phrases. The whole suggestion often is not in the student file. */
 export function contentWords(phrases: string[]): string[] {
   const seen = new Set<string>()
   const words: string[] = []
@@ -61,15 +57,12 @@ export function phraseKey(text: string): string {
   return text.toLowerCase().replace(/\s+/g, ' ').trim()
 }
 
-function countWhere(test: (text: string) => boolean): number {
-  let n = 0
-  for (const row of ROSTER) {
-    if (test(recordText(row))) n += 1
-  }
-  return n
-}
-
-export function expansionReport(phrases: SearchPhrase[]): ExpansionReport {
+/**
+ * How many records the caller's own words reach, and how many more the SerpApi phrases add.
+ * "No expansion" counts records with any of the caller's words. "With expansion" adds records with
+ * a whole phrase, or a word inside one, from any engine.
+ */
+export function expansionReport(rows: ApiStudent[], query: string, phrases: SearchPhrase[]): ExpansionReport {
   const unique: SearchPhrase[] = []
   const seen = new Set<string>()
   for (const phrase of phrases) {
@@ -79,88 +72,29 @@ export function expansionReport(phrases: SearchPhrase[]): ExpansionReport {
     unique.push({ text: phrase.text.trim(), source: phrase.source })
   }
   const keys = unique.map((phrase) => phraseKey(phrase.text))
-  const words = contentWords(unique.map((phrase) => phrase.text))
-  const literal = countWhere(literalMatch)
-  const expanded = countWhere(
-    (text) => literalMatch(text) || keys.some((key) => text.includes(key)) || words.some((word) => hasWord(text, word)),
-  )
+  const said = contentWords([query])
+  const words = contentWords(unique.map((phrase) => phrase.text)).filter((word) => !said.includes(word))
+  const texts = rows.map((row) => ({ id: row.student_id, text: recordText(row) }))
+
+  const literalIds = new Set<string>()
+  const expandedIds = new Set<string>()
+  for (const { id, text } of texts) {
+    const literal = said.some((word) => hasWord(text, word))
+    if (literal) literalIds.add(id)
+    if (literal || keys.some((key) => text.includes(key)) || words.some((word) => hasWord(text, word))) expandedIds.add(id)
+  }
+  const count = (test: (text: string) => boolean) => texts.reduce((n, row) => n + (test(row.text) ? 1 : 0), 0)
+
   return {
-    total: ROSTER.length,
-    literal,
-    expanded,
-    added: expanded - literal,
-    examples: unique.map((phrase) => ({
-      ...phrase,
-      hits: countWhere((text) => text.includes(phraseKey(phrase.text))),
-    })),
+    total: rows.length,
+    literal: literalIds.size,
+    expanded: expandedIds.size,
+    added: expandedIds.size - literalIds.size,
+    examples: unique.map((phrase) => ({ ...phrase, hits: count((text) => text.includes(phraseKey(phrase.text))) })),
     wordHits: words
-      .map((text) => ({ text, hits: countWhere((doc) => hasWord(doc, text)) }))
+      .map((text) => ({ text, hits: count((doc) => hasWord(doc, text)) }))
       .filter((word) => word.hits > 0),
-  }
-}
-
-export type MatchParts = {
-  topic: number
-  emotion: number
-  ask: number
-  said: string[]
-  phrases: string[]
-}
-
-const TOPIC_TERMS: { text: string; units: number }[] = [
-  { text: 'computer science', units: 2 },
-  { text: 'bombing', units: 1 },
-  { text: 'data', units: 1 },
-  { text: 'struc', units: 1 },
-  { text: 'quiz', units: 1 },
-  { text: 'tired', units: 1 },
-  { text: 'pretending', units: 1 },
-  { text: 'behind', units: 1 },
-  { text: 'tutor', units: 1 },
-  { text: 'office', units: 1 },
-  { text: 'class', units: 1 },
-  { text: 'coding', units: 1 },
-  { text: 'failing', units: 1 },
-  { text: 'lecture', units: 1 },
-  { text: 'project', units: 1 },
-]
-
-function topicHits(text: string): { said: string[]; units: number } {
-  const said: string[] = []
-  let units = 0
-  for (const term of TOPIC_TERMS) {
-    const found = term.text.includes(' ') || term.text === 'quiz' || term.text === 'class'
-      ? text.includes(term.text)
-      : hasWord(text, term.text)
-    if (!found) continue
-    said.push(term.text)
-    units += term.units
-  }
-  return { said, units }
-}
-
-/** A shorter phrase inside a longer hit is the same match, counted once. */
-function uniquePhrases(text: string, phrases: string[]): string[] {
-  const hit = phraseHits(text, phrases.map(phraseKey)).sort((a, b) => b.length - a.length)
-  const kept: string[] = []
-  for (const phrase of hit) {
-    if (kept.some((longer) => longer.includes(phrase))) continue
-    kept.push(phrase)
-  }
-  return kept
-}
-
-export function matchParts(row: RosterStudent, useExpansion: boolean, phrases: string[]): MatchParts {
-  const text = recordText(row)
-  const { said, units } = topicHits(text)
-  const full = useExpansion ? uniquePhrases(text, phrases) : []
-  const words = useExpansion ? contentWords(phrases).filter((word) => hasWord(text, word)) : []
-  const found = [...full, ...words.filter((word) => !full.some((phrase) => phrase.includes(word)))]
-  return {
-    topic: Math.min(1, units / 6),
-    emotion: Math.min(1, found.length / 2),
-    ask: row.major === 'Computer Science' ? 1 : 0,
-    said,
-    phrases: found,
+    literalIds,
+    expandedIds,
   }
 }

@@ -10,7 +10,19 @@ caller ─▶ Twilio ──POST /twilio/voice──▶ server.py ──TwiML: <C
                 ElevenLabs ──mu-law audio──▶ server.py ──media + marks──▶ Twilio ──▶ caller
 browser ◀──WS /dashboard (transcripts, operator lines, live record)── server.py
 records/{call_id}.json ◀── written when the call ends
+server.py ──/call/start, /call/turn, /call/record (matching_client.py)──▶ matching/api.py :8001
 ```
+
+## Running everything (phone server + matching + judge site)
+Three processes. The matching API needs `matching/.env` and `matching/rsa_key.p8` (from Deeksha, never committed) and a phone hotspot, since venue Wi-Fi blocks the database port.
+```bash
+.venv/bin/python server.py                                    # phone server, :8000 (ngrok points here)
+cd matching && .venv/bin/python -m uvicorn api:app --host 0.0.0.0 --port 8001   # matching API, :8001
+npm install && npm run dev                                    # judge site, http://localhost:5173
+```
+For the matching API's packages, once: `cd matching && python3 -m venv .venv && .venv/bin/pip install fastapi uvicorn scikit-learn snowflake-connector-python python-dotenv sentence-transformers "psycopg[binary]" pgvector google-genai twilio`.
+
+On the judge site, the top left is the Snowflake embedding map from the matching API (the caller's dot moves as their profile fills in), and the bottom left is the live transcript from the phone server. The phone app is at http://localhost:8001/app/ and the API docs at http://localhost:8001/docs. Each call is reported to the matching API as `ph_` + the caller number's last 10 digits; set `MATCHING_API_URL=` (empty) in `.env` to turn that off.
 
 ## Files
 | File | What it does |
@@ -19,6 +31,7 @@ records/{call_id}.json ◀── written when the call ends
 | `call_session.py` | One call's timing and audio: turn-taking, fillers, slow-model handling, barge-in, silence reminders, crisis lines, hangup, latency log. |
 | `ai_operator/` | The conversation itself, with no audio code (so `chat_test.py` runs the same logic). `conversation.py` per-call turn logic, `planner.py` phases and turn goals, `prompts.py` system prompt and fixed lines, `brain.py` the Spark reply engine, `safety.py` crisis tripwire and yes/no readers, `state.py` the call record. |
 | `tts.py` | ElevenLabs Flash over one warm multi-context WebSocket per call; fixed-line cache in `tts_cache/`. |
+| `matching_client.py` | Reports each call to the matching API in the background: `/call/start` on connect, `/call/turn` whenever the profile changes (newest only), `/call/record` at the end (without the transcript). Never holds up the call. |
 | `muse_client.py` | `MuseStream`: one Muse realtime session (handshake, audio sender, turn events, endStream, close codes). |
 | `dashboard.html` | Dashboard (served at `/` by server.py): "You:" / "Operator:" lines, profile panel, Download JSON. Reconnects automatically. |
 | `chat_test.py` | Talk to Aide by typing (no phone, no audio). `--selftest` runs offline checks. `--case all` runs the scripted cases (both real test calls plus talkative, guarded, and failed-exam callers) against the real model and prints turn counts, moves, repeated openings, and checks. |
@@ -45,7 +58,7 @@ Logs also go to `logs/aide.log` (rotating, gitignored), so a call can be checked
 
 ## How a call goes
 1. Aide plays a cached opening (it's an AI, not a therapist or emergency line) and asks for a first name. A returning caller (same number, saved name) gets "Welcome back" and skips the identity questions.
-2. Phases, decided in code: IDENTITY (name, school, then year and major in one question) → CONTEXT ("What made you call tonight?") → DEEPEN (at most 4 questions) → REFLECT (summary back, confirmed) → TIMING (now / later) → EMAIL (asked once, cached line, spelled back and confirmed) → CLOSING. If the caller opens up during IDENTITY, Aide goes straight to the conversation and asks any missing school / year / major just before the email.
+2. Phases, decided in code: IDENTITY (name, school, then year and major in one question) → CONTEXT ("What made you call tonight?") → DEEPEN (at most 4 questions) → REFLECT (summary back, confirmed) → TIMING (now / later) → EMAIL (asked once, cached line, spelled back and confirmed) → CLOSING. If the caller opens up during IDENTITY, Aide goes straight to the conversation and asks any missing name / school / year / major just before the email.
    - REFLECT comes as soon as Aide knows what they're going through (with at least one theme) and what they want from another student (`wants` or `partner_traits`), both at confidence ≥ 0.6, or when DEEPEN's 4 questions are used up. If AI chatbot use is still unknown by then, one turn goes to "What do you usually end up talking to the chatbot about?" first. How long and interests are filled only when the caller mentions them.
    - In CONTEXT/DEEPEN, code picks a *move* each turn (`planner.choose_move`) from the record and a quick read of the caller's latest line: FOLLOW_THREAD (rich answer: pick up their words), OFFER_CHOICES (vague answer: 2-3 options; never twice in a row), CHATBOT_DOORWAY ("What was the last thing you talked to a chatbot about?", at most once), THEME_PROBE (a follow-up from the theme bank in `prompts.py`), ASK_WANTS, LET_THEM_TALK (long emotional answer that trails off), ASK_AI_USE, WRAP (go to REFLECT). No move repeats back to back except FOLLOW_THREAD. Each goal lets the model wrap up early if the latest line already covers what's missing; it reports that in the JSON's `move`.
    - Aide sees its last 3 replies, so it doesn't open the same way twice, and at most one reply in three opens with "thanks" / "got it". If the first sentence of a reply describes what Aide is about to say ("I'll ask what...") instead of saying it, the engine drops it before anything is spoken and asks again.

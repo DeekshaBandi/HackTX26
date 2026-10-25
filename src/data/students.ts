@@ -1,27 +1,24 @@
-import { matchParts, type MatchParts } from '../lib/expand.ts'
-import { ROSTER, type RosterStudent } from './roster.ts'
+import type { ApiStudent, Nearby, NearbyStudent } from '../lib/api.ts'
 
-export type Parts = {
-  topic: number
-  emotion: number
-  ask: number
-}
-
-export type Reason = {
-  label: string
-  detail: string
-}
-
+/** One pin on the people map: a real nearby student from the matching API. */
 export type Student = {
   id: string
   label: string
   short: string
   color: string
-  calledOn: string
   summary: string
-  parts: Parts
-  why: Reason[]
+  theme: string | null
+  stage: string | null
+  major: string | null
+  year: string | null
+  online: boolean
+  synthetic: boolean
+  /** Cosine similarity of the two embeddings, 0 to 1 */
+  similarity: number
+  /** similarity × 100, rounded, for labels and bars */
   score: number
+  /** At or above the score matching needs before it connects two people */
+  matchable: boolean
   x: number
   z: number
 }
@@ -31,106 +28,58 @@ const COLORS = [
   '#7a5b8a', '#6e6256', '#b5734a', '#4f6f8f', '#8a6248',
 ]
 
-const DAYS = [
-  'Sun, Oct 18, 2026',
-  'Mon, Oct 19, 2026',
-  'Tue, Oct 20, 2026',
-  'Wed, Oct 21, 2026',
-  'Thu, Oct 22, 2026',
-  'Fri, Oct 23, 2026',
-  'Sat, Oct 24, 2026',
-]
+/** Similarity range the ring spans: the edge is 0.60, the center is 1.00. */
+const RING_LOW = 0.6
+const RING_HIGH = 1
 
-export function compatibility(parts: Parts): number {
-  const raw = 0.5 * parts.topic + 0.3 * parts.emotion + 0.2 * parts.ask
-  return Math.round(raw * 100)
-}
-
-export function scoreMath(parts: Parts): string {
-  const raw = 0.5 * parts.topic + 0.3 * parts.emotion + 0.2 * parts.ask
-  const n = (v: number) => v.toFixed(2)
-  return `0.5 × ${n(parts.topic)}  +  0.3 × ${n(parts.emotion)}  +  0.2 × ${n(parts.ask)}  =  ${raw.toFixed(2)}  →  ${Math.round(raw * 100)}`
-}
-
-function pinRadius(score: number): number {
-  const t = Math.min(1, Math.max(0, (score - 25) / 69))
+function pinRadius(similarity: number): number {
+  const t = Math.min(1, Math.max(0, (similarity - RING_LOW) / (RING_HIGH - RING_LOW)))
   return 46 - t * 24
 }
 
-function calledOn(id: string): string {
-  let hash = 0
-  for (let i = 0; i < id.length; i += 1) hash = (hash * 33 + id.charCodeAt(i)) >>> 0
-  return DAYS[hash % DAYS.length]
+export function shortId(id: string): string {
+  return id.replace(/^(syn|ph|live)_/, '')
 }
 
-function whyFor(row: RosterStudent, parts: MatchParts, useExpansion: boolean): Reason[] {
-  const said = parts.said.length > 0
-    ? `The record includes ${parts.said.join(', ')}.`
-    : 'None of the words from the call show up on this record.'
-  let feeling: string
-  if (!useExpansion) feeling = 'Expansion is off, so the SerpAPI phrases are not counted.'
-  else if (parts.phrases.length > 0) feeling = `Phrases from the live search that landed here: ${parts.phrases.join('; ')}.`
-  else feeling = 'None of the phrases returned by the search show up on this record.'
-  const ask = row.major === 'Computer Science'
-    ? 'Same major the caller asked for. Name and school stay off this screen.'
-    : `${row.major}. Not the computer science peer they asked for. Name and school stay off this screen.`
-  return [
-    { label: 'Words they said', detail: said },
-    { label: 'Expanded phrases', detail: feeling },
-    { label: 'Same major', detail: ask },
-  ]
+export function summaryOf(row: Pick<ApiStudent, 'situation' | 'theme'>): string {
+  const parts = [row.situation, row.theme].filter((part): part is string => Boolean(part && part.trim()))
+  return parts.length > 0 ? `${parts.join('. ')}.` : 'Nothing on the record yet.'
 }
 
-function toScored(row: RosterStudent, useExpansion: boolean, phrases: string[], color: string): Student {
-  const parts = matchParts(row, useExpansion, phrases)
-  const digits = row.student_id.replace('syn_', '')
+function toPin(row: NearbyStudent, threshold: number | null, color: string): Student {
+  const digits = shortId(row.student_id)
   return {
     id: row.student_id,
     label: `Student · ${digits}`,
     short: digits,
     color,
-    calledOn: calledOn(row.student_id),
-    summary: `${row.situation} ${row.theme}.`,
-    parts,
-    why: whyFor(row, parts, useExpansion),
-    score: compatibility(parts),
+    summary: summaryOf(row),
+    theme: row.theme,
+    stage: row.stage,
+    major: row.major,
+    year: row.year,
+    online: row.online,
+    synthetic: row.is_synthetic,
+    similarity: row.score,
+    score: Math.round(row.score * 100),
+    matchable: threshold != null && row.score >= threshold,
     x: 0,
     z: 0,
   }
 }
 
+/** Highest score first, spread around the caller, closer to the center for a higher score. */
 function place(rows: Student[]): Student[] {
-  const ranked = [...rows].sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
-  const pos = new Map<string, { x: number; z: number }>()
-  ranked.forEach((row, i) => {
-    const angle = -Math.PI / 2 + (i / ranked.length) * Math.PI * 2
-    const radius = pinRadius(row.score)
-    pos.set(row.id, {
-      x: Math.cos(angle) * radius,
-      z: Math.sin(angle) * radius,
-    })
-  })
-  return ranked.map((row) => {
-    const at = pos.get(row.id)!
-    return { ...row, x: at.x, z: at.z }
+  return rows.map((row, i) => {
+    const angle = -Math.PI / 2 + (i / rows.length) * Math.PI * 2
+    const radius = pinRadius(row.similarity)
+    return { ...row, x: Math.cos(angle) * radius, z: Math.sin(angle) * radius }
   })
 }
 
-/** Top 10 pins. Phrase list is whatever SerpAPI just returned. */
-export function topPins(useExpansion: boolean, phrases: string[]): Student[] {
-  const ranked = ROSTER
-    .map((row) => toScored(row, useExpansion, phrases, '#6e6256'))
-    .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
-    .slice(0, 10)
-    .map((row, i) => ({ ...row, color: COLORS[i % COLORS.length] }))
+/** Top pins straight from GET /students/{id}/nearby, already sorted by the API. */
+export function topPins(nearby: Nearby | null): Student[] {
+  if (!nearby) return []
+  const ranked = nearby.matches.map((row, i) => toPin(row, nearby.threshold, COLORS[i % COLORS.length]))
   return place(ranked)
-}
-
-export const CALLER = {
-  id: 'you',
-  label: 'You',
-  short: 'YOU',
-  calledOn: 'Sat, Oct 24, 2026 · on the call',
-  summary:
-    'A computer science student, still in data structures, bombing the quizzes. They stopped at “data struc.” They do not have anyone in the major to say that to. They want a classmate who has felt behind. Not a tutor.',
 }

@@ -42,13 +42,13 @@ Fields
 - ready_for_next_phase: true if you think this phase's questions are answered.
 - learned: every field the caller's latest line tells you or clearly implies, even in passing ("since the start of the semester" means stage: weeks or months; "I talk to ChatGPT every night" is ai_use). Everything else null. A new value replaces the old one, so use it for corrections.
   name: first name. school. year: freshman, sophomore, junior, senior, grad, or other. major.
-  situation: one or two sentences on what they're going through.
+  situation: one or two specific sentences on what they're going through, with their details, like "Moved from Ohio for school and hasn't made close friends yet; weekends alone are the hardest." Never a bare label like "Feeling lonely".
   themes: the full current list, only from: {", ".join(THEMES)}.
   stage: how long it has been going on: {", ".join(ENUMS["stage"])}.
   wants: what they want from another student: {", ".join(ENUMS["wants"])}.
   partner_traits: the full current list of short phrases for qualities they want in the other student, in their words, like "high achiever", "understands grade pressure", "good listener".
   ai_use: how often they talk to AI chatbots and about what, a few words.
-  interests: the full current list of one to three hobbies or interests.
+  interests: the full current list of one to three hobbies or interests they mention, like ["basketball"].
   timing: when they want to talk to someone: {", ".join(ENUMS["timing"])}.
 - confidence: 0 to 1, how sure you are overall, across the whole call, about situation, themes, stage, and wants.
 - summary: null unless you learned something new this turn. Otherwise rewrite the whole summary in two to four plain sentences, always in this order: what they're going through; how long; how they use AI chatbots; what they want from a person, including the qualities they want in them. Skip any part you don't know yet, and leave out interests. Never include their name, school, year, major, or email, and don't use pronouns: write "Moved from Ohio and feels lonely.", not "She moved...".

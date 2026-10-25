@@ -31,7 +31,7 @@ CONFIDENT = 0.6
 
 IDENTITY_ORDER = ["name", "school", "year_major"]
 IDENTITY_ITEMS = {"name", "school", "year_major", "year", "major"}
-DEFERRED_IDENTITY = ["school", "year_major"]   # asked before the email if IDENTITY was skipped
+DEFERRED_IDENTITY = ["name", "school", "year_major"]   # asked before the email if IDENTITY was skipped
 # Items that stand for more than one profile field.
 ITEM_FIELDS = {"year_major": ("year", "major")}
 

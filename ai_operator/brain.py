@@ -78,11 +78,15 @@ def validate_package(data: Any) -> Package | None:
         if value is None:
             continue
         if name in LIST_FIELDS:
+            if isinstance(value, str):
+                value = value.split(",")    # "basketball" instead of ["basketball"]
             if not isinstance(value, list):
                 continue
             items = [s for s in (_clean_str(v, 60) for v in value) if s]
             if name == "themes":
-                items = [t for t in dict.fromkeys(i.lower() for i in items) if t in THEMES]
+                # "academic pressure" and "academic-pressure" mean academic_pressure
+                keys = (i.lower().replace(" ", "_").replace("-", "_") for i in items)
+                items = [t for t in dict.fromkeys(keys) if t in THEMES]
             elif name == "partner_traits":
                 items = list(dict.fromkeys(items))[:5]
             else:

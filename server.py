@@ -8,7 +8,8 @@ Flow:
   WS   /dashboard       browser pages; we broadcast call/transcript/operator events
   GET  /                the dashboard page (dashboard.html)
 
-Per-call conversation logic is in call_session.py and ai_operator/.
+Per-call conversation logic is in call_session.py and ai_operator/. Each call is
+also reported to the matching API (matching/api.py) by matching_client.py.
 
 Run:  .venv/bin/python server.py
 """
@@ -41,6 +42,7 @@ from ai_operator.brain import SparkCombinedEngine
 from ai_operator.prompts import ALL_FIXED
 from ai_operator.state import IDENTITY_FIELDS, CallState
 from call_session import CallSession
+from matching_client import MatchingReporter, api_url as matching_api_url
 from muse_client import MuseStream
 from tts import ElevenLabsTTS, FixedAudio
 
@@ -370,6 +372,7 @@ async def lifespan(app: FastAPI):
                      "!" * 78]:
             log.warning(line)
         log.info("Dashboard:     http://localhost:%d/", PORT)
+    log.info("Matching API:  %s", matching_api_url() or "off (MATCHING_API_URL is empty)")
     log.info("Loaded %d saved call records (%d returning callers known)", load_records(), len(known_callers))
     t0 = time.monotonic()
     counts, _ = await asyncio.gather(fixed_audio.build(), asyncio.to_thread(configure_twilio_webhook))
@@ -432,6 +435,7 @@ async def twilio_audio(ws: WebSocket) -> None:
     call_id = ""
     muse: MuseStream | None = None
     session: CallSession | None = None
+    matching: MatchingReporter | None = None
     converter = TwilioAudioConverter()
     frames = 0
     try:
@@ -457,11 +461,19 @@ async def twilio_audio(ws: WebSocket) -> None:
                 log.info("[%s] Twilio stream started: streamSid=%s from=%s format=%s",
                          short(call_id), start.get("streamSid"), from_number, start.get("mediaFormat"))
                 await call_started(call_id, from_number)
+                matching = MatchingReporter(call_id, from_number, label=short(call_id))
+                matching.start()
+                broadcast_record = make_record_broadcaster(call_id)
+
+                def on_change(state: CallState, matching: MatchingReporter = matching) -> None:
+                    broadcast_record(state)
+                    matching.update(state.record())
+
                 session = CallSession(
                     new_call_state(call_id, from_number),
                     engine=SparkCombinedEngine(), tts=ElevenLabsTTS(label=short(call_id)),
                     fixed=fixed_audio, send=make_twilio_sender(ws), hangup=ws.close,
-                    emit=emit_operator, on_change=make_record_broadcaster(call_id), label=short(call_id))
+                    emit=emit_operator, on_change=on_change, label=short(call_id))
                 sessions[call_id] = session
                 dashboard_handler = make_transcript_handler(call_id)
 
@@ -501,6 +513,8 @@ async def twilio_audio(ws: WebSocket) -> None:
                 save_record(session.state)
             except Exception:
                 log.exception("[%s] Could not save the call record", short(call_id))
+            if matching is not None:
+                matching.finish(session.state.export())
         if call_id:
             await call_ended(call_id)
 

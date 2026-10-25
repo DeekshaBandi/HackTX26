@@ -600,6 +600,8 @@ def app_status(phone: str):
             "similarity": "Really similar" if (m["score"] or 0) >= 0.88 else "Similar",
         },
         "all_matches": len(matches),
+        # Same cached campus links as the waiting screen (the caller's own school)
+        "resources": _campus_resources(me["school"]),
     }
 
 

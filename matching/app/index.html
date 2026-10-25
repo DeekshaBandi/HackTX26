@@ -236,6 +236,7 @@ button{font-family:inherit}
       </div>
       <ul id="mWhy" style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:14px;font-size:16px;line-height:1.45"></ul>
     </section>
+    <section id="mResources" class="hidden" style="display:flex;flex-direction:column;gap:10px"></section>
     <p class="muted" style="margin:0;font-size:15px;line-height:1.45;text-align:center">AIEDH introduced you, then left so you two can talk.</p>
   </div>
   <div style="padding:12px 24px calc(28px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:4px">
@@ -415,17 +416,22 @@ function renderHome(){
   if (status.state === "waiting") {
     box.innerHTML = `<h3 style="margin:0;font-size:15px;font-weight:600" class="muted">Last time you called</h3>` +
       rowCard("#match", null, "Looking for someone who gets it", "We’ll show them here when we find them", true);
-    const res = status.resources || [];
-    if (res.length) {
-      const school = me && me.school ? esc(me.school) : "your school";
-      box.innerHTML += rowCard("#match", null, `Resources at ${school}`,
-        `${res.length} place${res.length === 1 ? "" : "s"} to go while you wait: ${res.map(r => TOPIC_LABEL[r.topic]).filter(Boolean).join(", ")}`);
-    }
+    box.innerHTML += resourcesRow(me);
     return;
   }
   const m = status.match;
   box.innerHTML = `<h3 style="margin:0;font-size:15px;font-weight:600" class="muted">Last time you called</h3>` +
-    rowCard(m.chat_id ? `#chat/${m.chat_id}` : "#match", m.name, `You matched with ${esc(m.name)}`, `${when(m.matched_at)}${m.school ? " · " + esc(m.school) : ""}`);
+    rowCard(m.chat_id ? `#chat/${m.chat_id}` : "#match", m.name, `You matched with ${esc(m.name)}`, `${when(m.matched_at)}${m.school ? " · " + esc(m.school) : ""}`) +
+    resourcesRow(me);
+}
+// "Resources at <school>" on home, for waiting and matched callers. Opens the screen that lists them.
+function resourcesRow(me){
+  const res = (status && status.resources) || [];
+  if (!res.length) return "";
+  const school = me && me.school ? esc(me.school) : "your school";
+  const topics = res.map(r => TOPIC_LABEL[r.topic]).filter(Boolean).join(", ");
+  return rowCard("#match", null, `Resources at ${school}`,
+    `${res.length} place${res.length === 1 ? "" : "s"} on campus${topics ? ": " + topics : ""}`);
 }
 function rowCard(href, name, title, sub, pulse){
   const icon = name
@@ -499,9 +505,7 @@ function showMatchState(){
     $("resources").classList.toggle("hidden", !res.length);
     if (res.length) {
       $("resources").innerHTML = `<h3 class="muted" style="margin:0;font-size:15px;font-weight:600">While you wait${status.me && status.me.school ? ", at " + esc(status.me.school) : ""}</h3>` +
-        res.map(r => `<a href="${esc(r.link)}" target="_blank" rel="noopener noreferrer" class="card" style="padding:16px;color:var(--text);text-decoration:none;display:flex;align-items:center;gap:14px">
-          <span style="flex:1;display:flex;flex-direction:column;gap:3px">${TOPIC_LABEL[r.topic] ? `<span class="pill sm" style="align-self:flex-start">${TOPIC_LABEL[r.topic]}</span>` : ""}<span style="font-size:16px;font-weight:600">${esc(r.title)}</span><span class="muted" style="font-size:14px">${esc(r.snippet || "")}</span></span>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></a>`).join("");
+        resourceCards(res);
     }
     return;
   }
@@ -519,6 +523,17 @@ function showMatchState(){
   if (m.school && me.school && m.school.toLowerCase() === me.school.toLowerCase()) why.push(`You both go to ${esc(m.school)}.`);
   $("mWhy").innerHTML = why.map(t => `<li style="display:flex;gap:12px"><span style="width:8px;height:8px;margin-top:8px;border-radius:50%;background:var(--accent);flex-shrink:0" aria-hidden="true"></span><span>${t}</span></li>`).join("");
   $("sayHi").href = m.chat_id ? `#chat/${m.chat_id}` : "#matches";
+  const res = status.resources || [];
+  $("mResources").classList.toggle("hidden", !res.length);
+  $("mResources").innerHTML = res.length
+    ? `<h3 class="muted" style="margin:0;font-size:15px;font-weight:600">Also at ${me.school ? esc(me.school) : "your school"}</h3>` + resourceCards(res)
+    : "";
+}
+// Campus resource cards (waiting and match screens): topic label, title, snippet, opens in a new tab
+function resourceCards(res){
+  return res.map(r => `<a href="${esc(r.link)}" target="_blank" rel="noopener noreferrer" class="card" style="padding:16px;color:var(--text);text-decoration:none;display:flex;align-items:center;gap:14px">
+    <span style="flex:1;display:flex;flex-direction:column;gap:3px">${TOPIC_LABEL[r.topic] ? `<span class="pill sm" style="align-self:flex-start">${TOPIC_LABEL[r.topic]}</span>` : ""}<span style="font-size:16px;font-weight:600">${esc(r.title)}</span><span class="muted" style="font-size:14px">${esc(r.snippet || "")}</span></span>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></a>`).join("");
 }
 
 /* ---------- 5. chat ---------- */

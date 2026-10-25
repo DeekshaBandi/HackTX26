@@ -65,12 +65,12 @@ function calledOn(id: string): string {
 
 function whyFor(row: RosterStudent, parts: MatchParts, useExpansion: boolean): Reason[] {
   const said = parts.said.length > 0
-    ? `The record contains ${parts.said.join(', ')}.`
-    : 'None of the finished words appear on this record.'
+    ? `The record includes ${parts.said.join(', ')}.`
+    : 'None of the words from the call show up on this record.'
   let feeling: string
-  if (!useExpansion) feeling = 'Expansion is off, so the related phrases are not counted.'
-  else if (parts.phrases.length > 0) feeling = `Related phrases on the record: ${parts.phrases.join('; ')}.`
-  else feeling = 'None of the expanded phrases landed on this record.'
+  if (!useExpansion) feeling = 'Expansion is off, so the SerpAPI phrases are not counted.'
+  else if (parts.phrases.length > 0) feeling = `Phrases from the live search that landed here: ${parts.phrases.join('; ')}.`
+  else feeling = 'None of the phrases returned by the search show up on this record.'
   const ask = row.major === 'Computer Science'
     ? 'Same major the caller asked for. Name and school stay off this screen.'
     : `${row.major}. Not the computer science peer they asked for. Name and school stay off this screen.`
@@ -81,8 +81,8 @@ function whyFor(row: RosterStudent, parts: MatchParts, useExpansion: boolean): R
   ]
 }
 
-function toScored(row: RosterStudent, useExpansion: boolean, color: string): Student {
-  const parts = matchParts(row, useExpansion)
+function toScored(row: RosterStudent, useExpansion: boolean, phrases: string[], color: string): Student {
+  const parts = matchParts(row, useExpansion, phrases)
   const digits = row.student_id.replace('syn_', '')
   return {
     id: row.student_id,
@@ -116,17 +116,15 @@ function place(rows: Student[]): Student[] {
   })
 }
 
-/** Top 10 pins for the map. Scores come from the 1,000-row file. */
-export function topPins(useExpansion: boolean): Student[] {
+/** Top 10 pins. Phrase list is whatever SerpAPI just returned. */
+export function topPins(useExpansion: boolean, phrases: string[]): Student[] {
   const ranked = ROSTER
-    .map((row) => toScored(row, useExpansion, '#6e6256'))
+    .map((row) => toScored(row, useExpansion, phrases, '#6e6256'))
     .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
     .slice(0, 10)
     .map((row, i) => ({ ...row, color: COLORS[i % COLORS.length] }))
   return place(ranked)
 }
-
-export const BEST: Student = topPins(true)[0]
 
 export const CALLER = {
   id: 'you',

@@ -4,87 +4,10 @@ import { recordText, ROSTER, type RosterStudent } from '../data/roster.ts'
 export const CALL_QUERY = "I've been in computer science and I keep bombing the data struc"
 export const UNFINISHED_TAIL = 'struc'
 
-export type EngineKind = 'autocomplete' | 'web' | 'scholar' | 'news' | 'video' | 'forum'
-
-export type EngineSpec = {
-  id: string
-  label: string
-  engine: string
-  kind: EngineKind
-  phrases: string[]
+export type SearchPhrase = {
+  text: string
+  source: string
 }
-
-/**
- * Phrases stand in for what each SerpAPI engine would return for this call.
- * Hit counts are computed against data/students.json. Nothing here calls SerpAPI.
- * Forums are one engine in the list, not the whole expansion.
- */
-export const ENGINES: EngineSpec[] = [
-  {
-    id: 'autocomplete',
-    label: 'Google Autocomplete',
-    engine: 'google_autocomplete',
-    kind: 'autocomplete',
-    phrases: [
-      'data structures',
-      'data structures and algorithms',
-      'data structures quiz',
-      'data structures class',
-      'data structures failing',
-    ],
-  },
-  {
-    id: 'google',
-    label: 'Google Search',
-    engine: 'google',
-    kind: 'web',
-    phrases: ['failing a class', 'burned out from classes'],
-  },
-  {
-    id: 'scholar',
-    label: 'Google Scholar',
-    engine: 'google_scholar',
-    kind: 'scholar',
-    phrases: ['imposter syndrome in a hard major', 'imposter syndrome'],
-  },
-  {
-    id: 'news',
-    label: 'Google News',
-    engine: 'google_news',
-    kind: 'news',
-    phrases: ["can't focus in lecture"],
-  },
-  {
-    id: 'youtube',
-    label: 'YouTube',
-    engine: 'youtube',
-    kind: 'video',
-    phrases: ['drowning in coding', 'too many coding projects'],
-  },
-  {
-    id: 'bing',
-    label: 'Bing',
-    engine: 'bing',
-    kind: 'web',
-    phrases: ['everyone in my intro class', 'gap between me and my peers'],
-  },
-  {
-    id: 'duckduckgo',
-    label: 'DuckDuckGo',
-    engine: 'duckduckgo',
-    kind: 'web',
-    phrases: ['coding assignments'],
-  },
-  {
-    id: 'reddit',
-    label: 'Reddit',
-    engine: 'reddit',
-    kind: 'forum',
-    phrases: ['imposter syndrome hitting hard'],
-  },
-]
-
-const PHRASES = ENGINES.flatMap((engine) => engine.phrases)
 
 function hasWord(text: string, word: string): boolean {
   return new RegExp(`\\b${word}\\b`, 'i').test(text)
@@ -99,19 +22,10 @@ export function phraseHits(text: string, phrases: string[]): string[] {
   return phrases.filter((phrase) => text.includes(phrase))
 }
 
-export function expansionMatch(text: string): boolean {
-  return literalMatch(text) || phraseHits(text, PHRASES).length > 0
-}
-
-export type PhraseHit = { text: string; hits: number }
-
-export type EngineReport = {
-  id: string
-  label: string
-  engine: string
-  kind: EngineKind
+export type ExamplePhrase = {
+  text: string
+  source: string
   hits: number
-  phrases: PhraseHit[]
 }
 
 export type ExpansionReport = {
@@ -119,7 +33,32 @@ export type ExpansionReport = {
   literal: number
   expanded: number
   added: number
-  engines: EngineReport[]
+  examples: ExamplePhrase[]
+  wordHits: { text: string; hits: number }[]
+}
+
+const STOP_WORDS = new Set([
+  'what', 'when', 'where', 'which', 'have', 'high', 'this', 'that', 'with', 'from',
+  'your', 'about', 'into', 'over', 'just', 'like', 'does', 'will', 'been', 'they',
+  'them', 'than', 'then', 'also', 'only', 'some', 'more', 'most', 'very',
+])
+
+/** Words inside the live phrases. The whole suggestion often is not in the student file. */
+export function contentWords(phrases: string[]): string[] {
+  const seen = new Set<string>()
+  const words: string[] = []
+  for (const phrase of phrases) {
+    for (const raw of phraseKey(phrase).split(/[^a-z0-9]+/)) {
+      if (raw.length < 4 || STOP_WORDS.has(raw) || seen.has(raw) || /^\d+$/.test(raw)) continue
+      seen.add(raw)
+      words.push(raw)
+    }
+  }
+  return words
+}
+
+export function phraseKey(text: string): string {
+  return text.toLowerCase().replace(/\s+/g, ' ').trim()
 }
 
 function countWhere(test: (text: string) => boolean): number {
@@ -130,29 +69,33 @@ function countWhere(test: (text: string) => boolean): number {
   return n
 }
 
-export function expansionReport(): ExpansionReport {
+export function expansionReport(phrases: SearchPhrase[]): ExpansionReport {
+  const unique: SearchPhrase[] = []
+  const seen = new Set<string>()
+  for (const phrase of phrases) {
+    const key = phraseKey(phrase.text)
+    if (key.length < 4 || seen.has(key)) continue
+    seen.add(key)
+    unique.push({ text: phrase.text.trim(), source: phrase.source })
+  }
+  const keys = unique.map((phrase) => phraseKey(phrase.text))
+  const words = contentWords(unique.map((phrase) => phrase.text))
   const literal = countWhere(literalMatch)
-  const expanded = countWhere(expansionMatch)
-  const engines = ENGINES.map((engine) => {
-    const phrases = engine.phrases.map((text) => ({
-      text,
-      hits: countWhere((doc) => doc.includes(text)),
-    }))
-    return {
-      id: engine.id,
-      label: engine.label,
-      engine: engine.engine,
-      kind: engine.kind,
-      hits: countWhere((doc) => engine.phrases.some((phrase) => doc.includes(phrase))),
-      phrases,
-    }
-  })
+  const expanded = countWhere(
+    (text) => literalMatch(text) || keys.some((key) => text.includes(key)) || words.some((word) => hasWord(text, word)),
+  )
   return {
     total: ROSTER.length,
     literal,
     expanded,
     added: expanded - literal,
-    engines,
+    examples: unique.map((phrase) => ({
+      ...phrase,
+      hits: countWhere((text) => text.includes(phraseKey(phrase.text))),
+    })),
+    wordHits: words
+      .map((text) => ({ text, hits: countWhere((doc) => hasWord(doc, text)) }))
+      .filter((word) => word.hits > 0),
   }
 }
 
@@ -164,19 +107,60 @@ export type MatchParts = {
   phrases: string[]
 }
 
-export function matchParts(row: RosterStudent, useExpansion: boolean): MatchParts {
-  const text = recordText(row)
+const TOPIC_TERMS: { text: string; units: number }[] = [
+  { text: 'computer science', units: 2 },
+  { text: 'bombing', units: 1 },
+  { text: 'data', units: 1 },
+  { text: 'struc', units: 1 },
+  { text: 'quiz', units: 1 },
+  { text: 'tired', units: 1 },
+  { text: 'pretending', units: 1 },
+  { text: 'behind', units: 1 },
+  { text: 'tutor', units: 1 },
+  { text: 'office', units: 1 },
+  { text: 'class', units: 1 },
+  { text: 'coding', units: 1 },
+  { text: 'failing', units: 1 },
+  { text: 'lecture', units: 1 },
+  { text: 'project', units: 1 },
+]
+
+function topicHits(text: string): { said: string[]; units: number } {
   const said: string[] = []
-  if (text.includes('computer science')) said.push('computer', 'science')
-  for (const word of ['bombing', 'data', 'struc']) {
-    if (hasWord(text, word)) said.push(word)
+  let units = 0
+  for (const term of TOPIC_TERMS) {
+    const found = term.text.includes(' ') || term.text === 'quiz' || term.text === 'class'
+      ? text.includes(term.text)
+      : hasWord(text, term.text)
+    if (!found) continue
+    said.push(term.text)
+    units += term.units
   }
-  const phrases = useExpansion ? phraseHits(text, PHRASES) : []
+  return { said, units }
+}
+
+/** A shorter phrase inside a longer hit is the same match, counted once. */
+function uniquePhrases(text: string, phrases: string[]): string[] {
+  const hit = phraseHits(text, phrases.map(phraseKey)).sort((a, b) => b.length - a.length)
+  const kept: string[] = []
+  for (const phrase of hit) {
+    if (kept.some((longer) => longer.includes(phrase))) continue
+    kept.push(phrase)
+  }
+  return kept
+}
+
+export function matchParts(row: RosterStudent, useExpansion: boolean, phrases: string[]): MatchParts {
+  const text = recordText(row)
+  const { said, units } = topicHits(text)
+  const full = useExpansion ? uniquePhrases(text, phrases) : []
+  const words = useExpansion ? contentWords(phrases).filter((word) => hasWord(text, word)) : []
+  const found = [...full, ...words.filter((word) => !full.some((phrase) => phrase.includes(word)))]
   return {
-    topic: Math.min(1, said.length / 2),
-    emotion: Math.min(1, phrases.length / 2),
+    topic: Math.min(1, units / 6),
+    emotion: Math.min(1, found.length / 2),
     ask: row.major === 'Computer Science' ? 1 : 0,
     said,
-    phrases,
+    phrases: found,
   }
 }

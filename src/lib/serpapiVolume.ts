@@ -1,6 +1,6 @@
 /**
  * Volume probe. Present so the live path is visible. Not called.
- * The key is blank on purpose. predictSimilarRequests returns null and does not fetch.
+ * The key is read from .env. An empty value makes this return null and skip the fetch.
  */
 
 export const CURSOR_VOLUME_PROMPT = `You are estimating how many similar student requests this call would surface. Do not hardcode the count.
@@ -16,10 +16,10 @@ Predict a range from data/students.json, recomputed whenever the phrase list cha
 - high = records that match after every engine's phrases are included
 Do not invent the high number.
 
-Do not call SerpAPI unless SERPAPI_KEY is set. In this demo the key is blank, so leave predictSimilarRequests uncalled and use the local expansion comparison.`
+Do not call SerpAPI unless VITE_SERPAPI_KEY is set in .env. Leave predictSimilarRequests uncalled and use the local expansion comparison.`
 
 export const VOLUME_PROBE_SOURCE = `export async function predictSimilarRequests(query: string) {
-  const apiKey = '' // SERPAPI_KEY intentionally unset
+  const apiKey = import.meta.env.VITE_SERPAPI_KEY ?? ''
   if (!apiKey) return null
   const params = new URLSearchParams({
     engine: 'google',
@@ -33,8 +33,7 @@ export const VOLUME_PROBE_SOURCE = `export async function predictSimilarRequests
 }`
 
 export async function predictSimilarRequests(query: string): Promise<{ totalResults: number } | null> {
-  const apiKey = ''
-  void query
+  const apiKey = import.meta.env.VITE_SERPAPI_KEY ?? ''
   if (!apiKey) return null
   const params = new URLSearchParams({
     engine: 'google',

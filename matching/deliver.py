@@ -139,3 +139,44 @@ def deliver(student_a, student_b, score, call_id=None, method="in_app",
     result["chat_id"] = open_chat(match_id, student_a, student_b, intro)
     result["method"] = delivered
     return result
+
+
+# ---------- demo: fake students reply in the chat (Gemini) ----------
+
+DEMO_REPLY_PROMPT = """You are {name}, a {year} {major} student at {school}. You're texting another college
+student you were just connected with on AIEDH, a peer support line. You're both going through
+something similar. What you're going through: "{situation}" ({stage}). Your interests: {interests}.
+
+Reply to their latest message like a real college student texting: casual, warm, 1 to 3 short
+sentences, lowercase is fine, no emojis overload, no advice lists, no therapy talk. Ask a question
+back sometimes. Never say you're an AI. Keep it light and everyday, nothing graphic.
+
+Chat so far:
+{history}
+
+Your reply:"""
+
+
+def demo_reply(chat_id, partner_id):
+    """
+    The 1,000 fake students can't really answer, so in the demo Gemini replies as them.
+    Only ever used for synthetic students (the app labels them "demo student").
+    """
+    import os
+    from google import genai
+
+    p = _student(partner_id)
+    rows = _db().execute(
+        "SELECT sender_id, body FROM chat_messages WHERE chat_id = %s AND sender_id <> 'system' "
+        "ORDER BY id DESC LIMIT 12", (chat_id,)).fetchall()[::-1]
+    names = {AI_ID: "AIEDH", partner_id: p["name"] or "me"}
+    history = "\n".join(f"{names.get(s, 'them')}: {b}" for s, b in rows)
+
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    model = os.environ.get("GEMINI_CHAT_MODEL", "gemini-2.5-flash")
+    resp = client.models.generate_content(model=model, contents=DEMO_REPLY_PROMPT.format(
+        name=p["name"], year=p["year"], major=p["major"], school=p["school"],
+        situation=p["situation"], stage=p["stage"], interests=p["interests"], history=history))
+    text = (resp.text or "").strip().strip('"')
+    if text:
+        _post(chat_id, partner_id, text)

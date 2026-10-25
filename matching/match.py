@@ -177,7 +177,7 @@ def update_profile(student_id, fields, call_id=None):
     fields = {k: v for k, v in fields.items() if v is not None}  # blanks never overwrite earlier answers
 
     cols = ["name", "school", "major", "year", "stage", "situation", "interests",
-            "timing", "profile_text", "safety_flag", "consented"]
+            "timing", "summary", "profile_text", "safety_flag", "consented"]
     row = _db().execute(
         f"SELECT {', '.join(cols)}, embedding_sf IS NOT NULL FROM students WHERE student_id = %s",
         (student_id,),
@@ -300,7 +300,7 @@ def apply_package(student_id, package, call_id=None):
     Saves what's new, handles the crisis check, re-embeds if the situation changed,
     and returns the same result as update_profile (matches, plan, ...).
     """
-    learned = dict(package.get("learned") or {})
+    learned = dict(package.get("learned") or package.get("profile") or {})
     if "themes" in learned:
         learned["tags"] = learned.pop("themes")
     if package.get("summary"):
@@ -317,4 +317,42 @@ def apply_package(student_id, package, call_id=None):
     result = update_profile(student_id, learned, call_id=call_id)
     result["crisis"] = crisis_level
     result["confidence"] = package.get("confidence") or {}
+    return result
+
+
+def ingest_call(record):
+    """
+    Takes the end-of-call record Person 1/2's code produces
+    ({"call_id", "caller_phone", "profile", "summary", "crisis", "confidence", "transcript", ...}),
+    saves the caller to the waiting pool, and finds their best match for a later group text / in-app intro.
+    The transcript is NOT stored (privacy: Tiger only keeps profile fields and call events).
+    Repeat callers keep the same student_id, based on their phone number.
+    """
+    phone = record.get("caller_phone")
+    digits = "".join(ch for ch in (phone or "") if ch.isdigit())
+    sid = f"ph_{digits[-10:]}" if digits else None
+    call_id = record.get("call_id")
+
+    sid = start_call(call_id, phone=phone, student_id=sid)
+    result = apply_package(sid, {
+        "profile": record.get("profile") or {},
+        "summary": record.get("summary"),
+        "crisis": record.get("crisis"),
+        "confidence": record.get("confidence"),
+    }, call_id=call_id)
+    end_call(sid, call_id=call_id)
+
+    # The call is over, so nobody can be merged live: it's an async connection
+    if result.get("plan"):
+        result["plan"] = plan(result["plan"].get("theme"), has_live_match=False)
+        result["plan"]["decision"] = "group_text"
+    result["student_id"] = sid
+
+    # Good match? Connect them in the app right away. Otherwise they stay in the waiting pool.
+    result["delivered"] = None
+    best = result.get("best")
+    col = "embedding_sf" if result.get("embedder") == "snowflake" else "embedding"
+    if result.get("crisis") in (None, "none") and best and best["score"] >= THRESHOLDS[col]:
+        from deliver import deliver  # imported here to avoid a circular import
+        result["delivered"] = deliver(sid, best["student_id"], best["score"], call_id=call_id, method="in_app")
     return result

@@ -149,6 +149,16 @@ def call_turn(req: Turn):
     return _with_positions(result, req.student_id)
 
 
+@app.post("/call/record")
+def call_record(record: dict):
+    """
+    Send the whole end-of-call record (call_id, caller_phone, profile, summary, crisis, ...).
+    Saves the caller to the waiting pool and returns their best matches. Transcript is ignored.
+    """
+    result = match.ingest_call(record)
+    return _with_positions(result, result["student_id"])
+
+
 @app.post("/call/end")
 def call_end(req: EndCall):
     match.end_call(req.student_id, call_id=req.call_id)
@@ -231,6 +241,20 @@ def chat_send(chat_id: str, msg: ChatMessage):
     if msg.sender_id not in chat:
         raise HTTPException(403, "sender is not in this chat")
     delivery._post(chat_id, msg.sender_id, msg.body)
+
+    # Demo: if the other person is a fake student, Gemini answers as them a few seconds later
+    other = chat[1] if msg.sender_id == chat[0] else chat[0]
+    synthetic = db().execute("SELECT is_synthetic FROM students WHERE student_id = %s", (other,)).fetchone()
+    if synthetic and synthetic[0]:
+        import threading
+
+        def reply():
+            try:
+                time.sleep(2)  # feels more human than an instant answer
+                delivery.demo_reply(chat_id, other)
+            except Exception as e:
+                print("demo reply failed:", str(e).splitlines()[0])
+        threading.Thread(target=reply, daemon=True).start()
     return {"ok": True}
 
 
@@ -271,6 +295,94 @@ def metrics():
     return data
 
 
+# ---------- phone app (in-app "did I match?" instead of SMS) ----------
+
+def _sid_for_phone(phone):
+    digits = "".join(ch for ch in phone if ch.isdigit())
+    if len(digits) < 10:
+        raise HTTPException(400, "enter a full phone number")
+    return f"ph_{digits[-10:]}"
+
+
+@app.get("/app/status")
+def app_status(phone: str):
+    """
+    What the phone app shows after a call. Poll every few seconds.
+    state: no_calls | waiting | matched | crisis
+    """
+    sid = _sid_for_phone(phone)
+    row = db().execute(
+        "SELECT name, school, year, major, situation, stage, wants, interests, crisis, safety_flag, "
+        "online, email, last_seen FROM students WHERE student_id = %s", (sid,)).fetchone()
+    if not row:
+        return {"state": "no_calls", "student_id": sid}
+    me = dict(zip(["name", "school", "year", "major", "situation", "stage", "wants",
+                   "interests", "crisis", "safety_flag", "online", "email", "last_seen"], row))
+    if me.pop("safety_flag") or me["crisis"] in ("concern", "urgent"):
+        return {"state": "crisis", "student_id": sid, "me": me}
+
+    matches = student_matches(sid)
+    if not matches:
+        # SerpApi can fill "resources" later (real links at the caller's school)
+        return {"state": "waiting", "student_id": sid, "me": me, "resources": []}
+
+    m = matches[0]
+    other = db().execute("SELECT is_synthetic FROM students WHERE student_id = %s", (m["other_id"],)).fetchone()
+    mine = {x.strip().lower() for x in (me["interests"] or "").split(",") if x.strip()}
+    theirs = {x.strip().lower() for x in (m["other_interests"] or "").split(",") if x.strip()}
+    return {
+        "state": "matched",
+        "student_id": sid,
+        "me": me,
+        "match": {
+            "chat_id": m["chat_id"],
+            "name": m["other_name"],
+            "school": m["other_school"],
+            "situation": m["other_situation"],
+            "stage": m["other_stage"],
+            "shared_interests": sorted(mine & theirs),
+            "intro": m["intro"],
+            "demo_student": bool(other and other[0]),
+            "matched_at": m["created_at"],
+            "similarity": "Really similar" if (m["score"] or 0) >= 0.88 else "Similar",
+        },
+        "all_matches": len(matches),
+    }
+
+
+@app.get("/app/matches")
+def app_matches(phone: str):
+    """Everyone this phone's student has matched with, newest first, with the last message."""
+    sid = _sid_for_phone(phone)
+    out = []
+    for m in student_matches(sid):
+        last = None
+        if m["chat_id"]:
+            r = db().execute(
+                "SELECT sender_id, body, created_at FROM chat_messages "
+                "WHERE chat_id = %s AND sender_id NOT IN ('system') ORDER BY id DESC LIMIT 1",
+                (m["chat_id"],)).fetchone()
+            if r:
+                last = {"from_me": r[0] == sid, "from_ai": r[0] == "aiedh", "body": r[1], "at": r[2]}
+        demo = db().execute("SELECT is_synthetic FROM students WHERE student_id = %s", (m["other_id"],)).fetchone()
+        out.append({"chat_id": m["chat_id"], "name": m["other_name"], "school": m["other_school"],
+                    "matched_at": m["created_at"], "last": last, "demo_student": bool(demo and demo[0])})
+    return out
+
+
+@app.get("/")
+def root():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse("/app/")
+
+
 @app.get("/health")
 def health():
     return {"ok": True, "students": db().execute("SELECT count(*) FROM students").fetchone()[0]}
+
+
+# Serve the phone app (matching/app/) at /app/ so everything is one URL.
+# Mounted last so it doesn't hide /app/status.
+from fastapi.staticfiles import StaticFiles  # noqa: E402
+
+app.mount("/app", StaticFiles(directory="app", html=True), name="phone_app")

@@ -106,7 +106,14 @@ def profile_text(p):
     a hobby like "cooking" pulled a lonely student toward a homesick-for-food match.
     Those fields are for the intro ("you both play basketball"), not for matching.
     """
-    return (p.get("situation") or "").strip()
+    situation = (p.get("situation") or "").strip()
+    summary = (p.get("summary") or "").strip()
+    # Real calls sometimes give a very thin situation ("Feeling lonely"). In that case
+    # add the first sentence of the AI's summary, which usually has the real story.
+    if situation and summary and len(situation.split()) < 6:
+        first = summary.split(". ")[0].rstrip(".")
+        return f"{situation}. {first}."
+    return situation
 
 
 # ---------- connections ----------

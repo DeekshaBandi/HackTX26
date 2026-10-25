@@ -12,6 +12,9 @@ Run:
 
 Then open http://localhost:8000/docs to see and try every endpoint.
 """
+import os
+import re
+import threading
 import time
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
@@ -234,6 +237,119 @@ def student_nearby(student_id: str, k: int = 10):
         m["xyz"] = pos.get(m["student_id"])
     return {"student_id": student_id, "embedder": "snowflake" if col == "embedding_sf" else "local",
             "threshold": match.THRESHOLDS[col], "matches": matches, "live_match": live}
+
+
+# ---------- SerpApi keyword expansion (judge site) ----------
+# The key stays on this server (SERPAPI_KEY in matching/.env) and never reaches a browser.
+# Only a scrubbed situation phrase is searched: no names, schools, numbers, emails, or transcripts.
+
+SERP_ENGINES = [
+    # (id, label, engine, query template)
+    ("autocomplete", "Google Autocomplete", "google_autocomplete", "{q}"),
+    ("google", "Google Search", "google", "{q} college student"),
+    ("bing", "Bing", "bing", "{q} college student"),
+    ("duckduckgo", "DuckDuckGo", "duckduckgo", "{q} college student"),
+]
+_NAME_FILLER = {"of", "at", "the", "and", "in", "for", "de", "la"}  # kept when stripping a school's words
+_serp = {"cache": {}, "used": 0}
+_serp_lock = threading.Lock()
+
+
+def _serp_limit():
+    return int(os.environ.get("SERPAPI_MAX_CALLS", "40"))
+
+
+def _search_phrase(situation, name=None, school=None):
+    """The caller's situation, cut down to a general phrase that is safe to send to a search engine."""
+    text = situation or ""
+    text = re.sub(r"\S+@\S+|https?://\S+|\+?\d[\d\s().-]{5,}\d|\d+", " ", text)
+    for private in (name, school):
+        for word in re.findall(r"[A-Za-z]{2,}", private or ""):
+            if word.lower() not in _NAME_FILLER:
+                text = re.sub(rf"\b{re.escape(word)}\b", " ", text, flags=re.I)
+    words = re.sub(r"[^\w\s'-]", " ", text).split()
+    return " ".join(words[:10]).lower()
+
+
+def _serp_phrases(body, query):
+    """Short queries the engine suggested (the same buckets the judge site used before). Article titles are not phrases."""
+    phrases, skip = [], {query.lower()}
+    for bucket, field in (("suggestions", "value"), ("related_searches", "query"), ("related_questions", "question")):
+        for item in body.get(bucket) or []:
+            text = (item if isinstance(item, str) else (item or {}).get(field) or "").strip()
+            if not 4 <= len(text) <= 70 or text.lower() in skip or any(p.lower() == text.lower() for p in phrases):
+                continue
+            phrases.append(text)
+            if len(phrases) >= 6:
+                return phrases
+    return phrases
+
+
+def _serp_search(job, phrase, key):
+    import requests
+
+    sid, label, engine, template = job
+    query = template.format(q=phrase)
+    out = {"id": sid, "label": label, "engine": engine, "query": query, "phrases": [], "error": None,
+           "receipt": None, "cached": False}
+    with _serp_lock:
+        hit = _serp["cache"].get((engine, query))
+        if hit is None and _serp["used"] >= _serp_limit():
+            out["error"] = f"Stopped at {_serp_limit()} SerpApi calls for this server run"
+            return out
+        if hit is None:
+            _serp["used"] += 1
+    if hit is not None:
+        return dict(hit, cached=True)
+    try:
+        r = requests.get("https://serpapi.com/search.json",
+                         params={"engine": engine, "q": query, "api_key": key}, timeout=20)
+        body = r.json()
+    except Exception as e:
+        out["error"] = re.sub(r"api_key=[^&\s\"']+", "api_key=hidden", str(e).splitlines()[0])
+        return out
+    meta = body.get("search_metadata") or {}
+    out["receipt"] = {"id": meta.get("id", ""), "status": meta.get("status", ""),
+                      "created_at": meta.get("created_at", ""), "seconds": meta.get("total_time_taken")}
+    if body.get("error"):
+        out["error"] = str(body["error"])
+    else:
+        out["phrases"] = _serp_phrases(body, query)
+        if not out["phrases"]:
+            out["error"] = "No expansion phrases in the response."
+        with _serp_lock:
+            _serp["cache"][(engine, query)] = dict(out)
+    return out
+
+
+@app.get("/students/{student_id}/expansion")
+def student_expansion(student_id: str):
+    """
+    SerpApi keyword expansion for this student's situation, for the judge site.
+    Searches a few engines for related phrases. Repeat requests are served from memory,
+    and the server stops after SERPAPI_MAX_CALLS (default 40) real searches per run.
+    """
+    row = db().execute("SELECT situation, theme, name, school FROM students WHERE student_id = %s",
+                       (student_id,)).fetchone()
+    if not row:
+        raise HTTPException(404, "no such student")
+    phrase = _search_phrase(row[0] or row[1], name=row[2], school=row[3])
+    key = os.environ.get("SERPAPI_KEY", "").strip().strip('"')
+    result = {"student_id": student_id, "query": phrase, "configured": bool(key), "engines": [],
+              "calls_used": _serp["used"], "calls_limit": _serp_limit()}
+    if not phrase:
+        return result
+    if not key:
+        result["engines"] = [{"id": j[0], "label": j[1], "engine": j[2], "query": j[3].format(q=phrase), "phrases": [],
+                              "error": "SERPAPI_KEY is not set in matching/.env", "receipt": None, "cached": False}
+                             for j in SERP_ENGINES]
+        return result
+    from concurrent.futures import ThreadPoolExecutor
+
+    with ThreadPoolExecutor(len(SERP_ENGINES)) as pool:
+        result["engines"] = list(pool.map(lambda job: _serp_search(job, phrase, key), SERP_ENGINES))
+    result["calls_used"] = _serp["used"]
+    return result
 
 
 @app.get("/pairs")

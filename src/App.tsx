@@ -1,6 +1,8 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { topPins } from './data/students.ts'
-import { API_BASE } from './lib/api.ts'
+import { API_BASE, type Expansion } from './lib/api.ts'
+import { expansionReport } from './lib/expand.ts'
+import { phrasesFromEngines, runSerpApiExpansion } from './lib/serpapiLive.ts'
 import { useJudgeData } from './lib/useJudgeData.ts'
 import { EmbeddingPanel } from './components/EmbeddingPanel.tsx'
 import { EmbeddingView } from './components/EmbeddingView.tsx'
@@ -20,6 +22,32 @@ export default function App() {
   const pins = useMemo(() => topPins(data.nearby), [data.nearby])
   const nearIds = useMemo(() => pins.map((pin) => pin.id), [pins])
   const mapReady = data.students !== null && data.caller !== null && pins.length > 0
+  const [expanded, setExpanded] = useState(true)
+  const [expansion, setExpansion] = useState<Expansion | null>(null)
+  const [expansionError, setExpansionError] = useState<string | null>(null)
+
+  // SerpApi expansion for the current caller, once per caller and situation
+  const callerId = data.caller?.student_id ?? null
+  const situation = data.caller?.situation ?? null
+  useEffect(() => {
+    setExpansion(null)
+    setExpansionError(null)
+    if (!callerId) return
+    let cancelled = false
+    runSerpApiExpansion(callerId, situation)
+      .then((result) => !cancelled && setExpansion(result))
+      .catch((err: Error) => !cancelled && setExpansionError(err.message))
+    return () => {
+      cancelled = true
+    }
+  }, [callerId, situation])
+
+  const report = useMemo(() => {
+    if (!expansion || !data.students) return null
+    const others = data.students.filter((row) => row.student_id !== expansion.student_id)
+    return expansionReport(others, expansion.query, phrasesFromEngines(expansion.engines))
+  }, [expansion, data.students])
+  const reachIds = report && report.examples.length > 0 ? (expanded ? report.expandedIds : report.literalIds) : null
 
   // Same color for a theme everywhere on the page
   const themes = useMemo(
@@ -58,6 +86,7 @@ export default function App() {
               caller={data.caller}
               nearIds={nearIds}
               pairs={data.pairs}
+              reachIds={reachIds}
               themeColor={themeColor}
               selectedId={dotId}
               onSelect={setDotId}
@@ -103,6 +132,11 @@ export default function App() {
             call={data.call}
             nearby={data.nearby}
             delivered={data.delivered}
+            expansion={expansion}
+            expansionError={expansionError}
+            report={report}
+            expanded={expanded}
+            onExpanded={setExpanded}
             selectedId={personId}
             onSelect={setPersonId}
           />

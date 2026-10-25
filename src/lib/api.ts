@@ -75,3 +75,36 @@ export const api = {
   events: (minutes: number) => get<CallEvent[]>(`/events?minutes=${minutes}`),
   pairs: () => get<Pair[]>('/pairs'),
 }
+
+export type SerpReceipt = {
+  id: string
+  status: string
+  created_at: string
+  seconds: number | null
+}
+
+export type SerpEngine = {
+  id: string
+  label: string
+  engine: string
+  query: string
+  phrases: string[]
+  error: string | null
+  receipt: SerpReceipt | null
+  cached: boolean
+}
+
+export type Expansion = {
+  student_id: string
+  /** The scrubbed situation phrase the server searched for */
+  query: string
+  configured: boolean
+  engines: SerpEngine[]
+  calls_used: number
+  calls_limit: number
+}
+
+/** SerpApi runs on the API server, so the key never reaches this page. */
+export const serp = {
+  expansion: (id: string) => get<Expansion>(`/students/${encodeURIComponent(id)}/expansion`),
+}

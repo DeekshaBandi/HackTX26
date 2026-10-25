@@ -10,6 +10,8 @@ type Props = {
   caller: ApiStudent | null
   nearIds: string[]
   pairs: Pair[]
+  /** Students the SerpApi count reaches. Everyone else is faded. null shows everyone. */
+  reachIds: Set<string> | null
   themeColor: (theme: string | null) => string
   selectedId: string | null
   onSelect: (id: string | null) => void
@@ -33,7 +35,7 @@ function MapGround() {
 }
 
 /** Every student as one dot, colored by theme. One draw call for all of them. */
-function Dots({ students, nearIds, themeColor, selectedId, onSelect }: Omit<Props, 'caller' | 'pairs'>) {
+function Dots({ students, nearIds, reachIds, themeColor, selectedId, onSelect }: Omit<Props, 'caller' | 'pairs'>) {
   const mesh = useRef<THREE.InstancedMesh>(null)
   const placed = useMemo(() => students.filter((row) => row.xyz), [students])
   const near = useMemo(() => new Set(nearIds), [nearIds])
@@ -48,12 +50,14 @@ function Dots({ students, nearIds, themeColor, selectedId, onSelect }: Omit<Prop
       const s = row.student_id === selectedId ? 2.1 : near.has(row.student_id) ? 1.6 : row.is_synthetic ? 0.75 : 1.3
       m.makeScale(s, s, s).setPosition(at)
       target.setMatrixAt(i, m)
-      target.setColorAt(i, color.set(near.has(row.student_id) || row.student_id === selectedId ? '#9a3412' : themeColor(row.theme)))
+      const hot = near.has(row.student_id) || row.student_id === selectedId
+      const faded = reachIds != null && !reachIds.has(row.student_id)
+      target.setColorAt(i, color.set(hot ? '#9a3412' : faded ? '#dccfbd' : themeColor(row.theme)))
     })
     target.count = placed.length
     target.instanceMatrix.needsUpdate = true
     if (target.instanceColor) target.instanceColor.needsUpdate = true
-  }, [placed, near, themeColor, selectedId])
+  }, [placed, near, reachIds, themeColor, selectedId])
 
   const selected = placed.find((row) => row.student_id === selectedId)
 

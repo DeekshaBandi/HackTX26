@@ -743,3 +743,58 @@ blockquote {
   .pair { grid-template-columns: 1fr; grid-template-rows: minmax(520px, 1fr) minmax(520px, 1fr); }
   .column + .column { border-left: 0; border-top: 1px solid var(--line); }
 }
+
+.live-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.live-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.live-status i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #b5452b;
+}
+
+.live-status.connected i { background: #3c7a4a; }
+
+.live-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.live-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.live-badge.on { color: #3c7a4a; }
+
+.live-log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.live-log li { grid-template-columns: 72px 1fr; }
+.live-log li.caller span { color: var(--ink); }
+.live-log li.partial p { color: var(--muted); opacity: 0.7; }
+.live-log li.live-waiting {
+  display: block;
+  color: var(--muted);
+  font-style: italic;
+  font-size: 14px;
+}

@@ -3,8 +3,8 @@ import { LINES } from './data/call.ts'
 import { topPins } from './data/students.ts'
 import { expansionReport, type SearchPhrase } from './lib/expand.ts'
 import { phrasesFromEngines, runSerpApiExpansion, type LiveEngine } from './lib/serpapiLive.ts'
-import { EmbeddingPanel } from './components/EmbeddingPanel.tsx'
 import { EmbeddingView } from './components/EmbeddingView.tsx'
+import { LiveTranscript } from './components/LiveTranscript.tsx'
 import { MapLoading } from './components/MapLoading.tsx'
 import { PeopleGraph } from './components/PeopleGraph.tsx'
 import { PeoplePanel } from './components/PeoplePanel.tsx'
@@ -64,16 +64,7 @@ export default function App() {
               onSelect={setPhraseId}
             />
           </div>
-          <EmbeddingPanel
-            revealedLines={revealedLines}
-            selectedId={phraseId}
-            onSelect={setPhraseId}
-            nearest={mapReady ? { label: pins[0].label, score: pins[0].score } : null}
-            onReplay={() => {
-              setPhraseId(null)
-              setRevealedLines(0)
-            }}
-          />
+          <LiveTranscript />
         </section>
 
         <section className="column">

@@ -5,3 +5,11 @@ dist
 .env
 .env.*
 !.env.example
+
+# phone server
+.venv/
+__pycache__/
+*.pyc
+records/
+tts_cache/
+logs/

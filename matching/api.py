@@ -57,7 +57,8 @@ def _place(student_id):
     if not row or row[0] is None:
         return None
     mean, comps, scale = _projection()
-    p = ((np.asarray(row[0], dtype=float) - mean) @ comps.T) / scale
+    vec = row[0].to_numpy() if hasattr(row[0], "to_numpy") else row[0]   # pgvector may hand back a Vector
+    p = ((np.asarray(vec, dtype=float) - mean) @ comps.T) / scale
     p = np.clip(p, -1.2, 1.2).round(4).tolist()
     db().execute("UPDATE students SET x = %s, y = %s, z = %s WHERE student_id = %s", (*p, student_id))
     return p

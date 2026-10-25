@@ -642,6 +642,63 @@ blockquote {
 
 .phrase-label.on small { color: rgba(255, 250, 244, 0.72); }
 
+/* What each matched student said, in the top-left view once the others fade out */
+.match-label {
+  font-family: var(--sans);
+  color: var(--ink);
+  background: rgba(255, 250, 244, 0.96);
+  border: 1px solid var(--terra);
+  border-radius: 12px;
+  padding: 4px 7px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  width: max-content;
+  max-width: 128px;
+  box-shadow: 0 6px 16px rgba(80, 54, 28, 0.14);
+  /* Sits just above its dot rather than on it */
+  position: relative;
+  top: -28px;
+  animation: match-label-in 0.6s ease both;
+}
+
+.match-label small {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--terra);
+}
+
+@keyframes match-label-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.9); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .match-label { animation-duration: 0.01s; }
+}
+
+.view-toggle {
+  position: absolute;
+  z-index: 5;
+  top: 12px;
+  right: 12px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 250, 244, 0.92);
+  box-shadow: 0 8px 24px rgba(80, 54, 28, 0.08);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.view-toggle:hover { border-color: var(--terra); }
+
 .ready p { margin: 0; line-height: 1.45; }
 
 .expand { margin-top: 16px; }

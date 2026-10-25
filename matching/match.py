@@ -18,12 +18,11 @@ Live matching. Person 2's code imports these functions:
 import time
 import uuid
 from collections import Counter
-from functools import lru_cache
 
 import numpy as np
 from psycopg.types.json import Jsonb
 
-from common import embed, profile_text, sf_embed, tiger_connect, warm_up
+from common import embed, profile_text, sf_embed, tiger_db, warm_up
 from forecast import plan
 
 # "Good enough" score differs per model, because each model spreads scores differently.
@@ -52,9 +51,8 @@ RESULT_COLS = [
 ]
 
 
-@lru_cache(maxsize=1)
 def _db():
-    return tiger_connect()
+    return tiger_db()
 
 
 # Last match we logged per call, so match_found is only logged when the best match changes

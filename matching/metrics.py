@@ -6,15 +6,13 @@ Numbers for the judge site (Nathan can import these, or call them through an API
 Run directly to print everything:
     python metrics.py
 """
-from functools import lru_cache
 
-from common import tiger_connect
+from common import tiger_db
 from forecast import plan
 
 
-@lru_cache(maxsize=1)
 def _db():
-    return tiger_connect()
+    return tiger_db()
 
 
 def time_to_human_daily(days=14):

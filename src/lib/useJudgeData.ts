@@ -5,6 +5,8 @@ import { api, type ApiStudent, type CallEvent, type Nearby, type Pair, type Stud
 const EVENT_MINUTES = 120
 const EVENT_POLL_MS = 2500
 const PAIRS_POLL_MS = 15000
+/** A call with no hang-up yet still counts as live on refresh if it logged something this recently. */
+const LIVE_GRACE_MS = 5 * 60 * 1000
 
 export type LiveCall = {
   key: string
@@ -99,10 +101,16 @@ export function useJudgeData(): JudgeData {
     }
   }, [])
 
+  // A refresh starts clean: only calls with activity since the page opened, or one still going
+  const openedAt = useMemo(() => Date.now(), [])
   const calls = useMemo(() => {
     const all = groupCalls(events)
-    return pinned ? all.filter((call) => call.studentId === pinned) : all
-  }, [events, pinned])
+    if (pinned) return all.filter((call) => call.studentId === pinned)
+    return all.filter((call) => {
+      const last = Date.parse(call.lastAt)
+      return last >= openedAt || (!call.ended && last >= openedAt - LIVE_GRACE_MS)
+    })
+  }, [events, pinned, openedAt])
 
   // Reload everyone when a new call comes in, so the new caller shows up as a dot
   const callCount = calls.length

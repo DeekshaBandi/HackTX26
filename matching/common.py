@@ -146,6 +146,17 @@ def tiger_connect():
             time.sleep(2)
 
 
+_tiger = None
+
+
+def tiger_db():
+    """One shared Tiger connection, replaced when it breaks (a Wi-Fi switch kills it)."""
+    global _tiger
+    if _tiger is None or _tiger.closed or _tiger.broken:
+        _tiger = tiger_connect()
+    return _tiger
+
+
 def connect():
     """Connection to Snowflake."""
     import snowflake.connector

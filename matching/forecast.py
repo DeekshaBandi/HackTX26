@@ -14,9 +14,8 @@ usually gets at this hour on this day of the week.
 """
 import math
 from datetime import datetime, timezone
-from functools import lru_cache
 
-from common import tiger_connect
+from common import tiger_db
 
 HOLD_WINDOW_SECONDS = 90     # longest we keep a caller waiting on the line
 HOLD_MIN_PROBABILITY = 0.25  # hold only if at least this likely someone calls in that window
@@ -31,9 +30,8 @@ SAY = {
 }
 
 
-@lru_cache(maxsize=1)
 def _db():
-    return tiger_connect()
+    return tiger_db()
 
 
 def calls_per_hour(theme, at=None):

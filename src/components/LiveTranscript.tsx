@@ -19,6 +19,8 @@ type Call = {
   from: string
   startedTs: number
   active: boolean
+  // Started while this page was open, so it drops in like a new call box.
+  fresh: boolean
   lines: Line[]
 }
 
@@ -35,7 +37,7 @@ type Message =
   | { type: 'call_record' }
 
 function blankCall(id: string, from = '', startedTs = Date.now() / 1000): Call {
-  return { id, from, startedTs, active: true, lines: [] }
+  return { id, from, startedTs, active: true, fresh: false, lines: [] }
 }
 
 function withCall(calls: Map<string, Call>, id: string, change: (call: Call) => Call): Map<string, Call> {
@@ -76,6 +78,8 @@ function reduce(calls: Map<string, Call>, msg: Message): Map<string, Call> {
         ...call,
         from: msg.from_number || call.from,
         startedTs: msg.ts,
+        active: true,
+        fresh: true,
       }))
     case 'muse_transcript':
       return withCall(calls, msg.call_id, (call) =>
@@ -143,6 +147,15 @@ export function LiveTranscript() {
   const all = [...calls.values()].sort((a, b) => b.startedTs - a.startedTs)
   const call = all.find((item) => item.active) ?? all[0] ?? null
   const lastLine = call?.lines.at(-1)
+  const onCall = status === 'connected' && !!call?.active
+  const statusText =
+    status === 'connecting'
+      ? 'Connecting…'
+      : status === 'reconnecting'
+        ? 'Phone server offline'
+        : onCall
+          ? 'Caller on the line'
+          : 'No active call'
 
   useEffect(() => {
     const el = logRef.current
@@ -156,45 +169,44 @@ export function LiveTranscript() {
           <p className="kicker">Live call</p>
           <h2>Transcript</h2>
         </div>
-        <span className={`live-status ${status}`}>
+        <span className={onCall ? 'live-status on' : 'live-status'} title={`Phone server: ${status}`}>
           <i aria-hidden />
-          {status === 'connected' ? 'connected' : status === 'connecting' ? 'connecting…' : 'reconnecting…'}
+          {statusText}
         </span>
       </div>
 
       {call ? (
-        <p className="lede live-meta">
-          {call.from || 'Unknown caller'} · {fmtTime(call.startedTs)}
-          <span className={call.active ? 'live-badge on' : 'live-badge'}>{call.active ? '● LIVE' : 'ENDED'}</span>
-        </p>
+        <div key={call.id} className={call.fresh ? 'live-call drop' : 'live-call'}>
+          <p className="lede live-meta">
+            {call.from || 'Unknown caller'} · {fmtTime(call.startedTs)}
+            <span className={call.active ? 'live-badge on' : 'live-badge'}>{call.active ? '● LIVE' : 'ENDED'}</span>
+          </p>
+          <ol
+            className="call-log live-log"
+            aria-live="polite"
+            ref={logRef}
+            onScroll={(event) => {
+              const el = event.currentTarget
+              nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60
+            }}
+          >
+            {call.lines.length === 0 ? (
+              <li className="live-waiting">{call.active ? 'Listening…' : 'No speech transcribed.'}</li>
+            ) : (
+              call.lines.map((line) => (
+                <li
+                  key={line.key}
+                  className={[line.who === 'Operator' ? 'op' : 'caller', line.final ? '' : 'partial'].join(' ')}
+                >
+                  <span>{line.who}:</span>
+                  <p>{line.text}</p>
+                </li>
+              ))
+            )}
+          </ol>
+        </div>
       ) : (
         <p className="lede">No calls yet. Call the Twilio number and the conversation shows up here as it happens.</p>
-      )}
-
-      {call && (
-        <ol
-          className="call-log live-log"
-          aria-live="polite"
-          ref={logRef}
-          onScroll={(event) => {
-            const el = event.currentTarget
-            nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60
-          }}
-        >
-          {call.lines.length === 0 ? (
-            <li className="live-waiting">{call.active ? 'Listening…' : 'No speech transcribed.'}</li>
-          ) : (
-            call.lines.map((line) => (
-              <li
-                key={line.key}
-                className={[line.who === 'Operator' ? 'op' : 'caller', line.final ? '' : 'partial'].join(' ')}
-              >
-                <span>{line.who}:</span>
-                <p>{line.text}</p>
-              </li>
-            ))
-          )}
-        </ol>
       )}
     </aside>
   )

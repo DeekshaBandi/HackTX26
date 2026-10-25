@@ -9,6 +9,10 @@ import { MapLoading } from './components/MapLoading.tsx'
 import { PeopleGraph } from './components/PeopleGraph.tsx'
 import { PeoplePanel } from './components/PeoplePanel.tsx'
 
+// The top-left embedding plays a hardcoded call, so it stays still until it is
+// driven by a real one. Flip to true to bring the scripted animation back.
+const EMBED_AUTOPLAY = false
+
 export default function App() {
   const [revealedLines, setRevealedLines] = useState(0)
   const [phraseId, setPhraseId] = useState<string | null>(null)
@@ -23,6 +27,7 @@ export default function App() {
   const mapReady = embedDone && searchPhrases !== null
 
   useEffect(() => {
+    if (!EMBED_AUTOPLAY) return
     if (revealedLines >= LINES.length) {
       setEmbedDone(true)
       return

@@ -40,7 +40,10 @@ function blankCall(id: string, from = '', startedTs = Date.now() / 1000): Call {
   return { id, from, startedTs, active: true, fresh: false, lines: [] }
 }
 
+// Only call_started opens a call. Lines for a call we are not showing (one that
+// ended before this page loaded, replayed by the server) are dropped.
 function withCall(calls: Map<string, Call>, id: string, change: (call: Call) => Call): Map<string, Call> {
+  if (!calls.has(id)) return calls
   const next = new Map(calls)
   next.set(id, change(calls.get(id) ?? blankCall(id)))
   return next
@@ -63,8 +66,9 @@ function putLine(call: Call, key: string, who: Line['who'], text: string, final:
 function reduce(calls: Map<string, Call>, msg: Message): Map<string, Call> {
   switch (msg.type) {
     case 'snapshot': {
+      // A refresh starts clear: only a call that is still live carries over.
       const next = new Map<string, Call>()
-      for (const call of msg.calls) {
+      for (const call of msg.calls.filter((item) => item.active)) {
         let item = { ...blankCall(call.call_id, call.from_number, call.started_ts), active: call.active }
         for (const turn of call.turns) {
           item = putLine(item, `c:${String(turn.turn_id)}`, 'Caller', turn.text, turn.final, turn.ts)
@@ -74,7 +78,7 @@ function reduce(calls: Map<string, Call>, msg: Message): Map<string, Call> {
       return next
     }
     case 'call_started':
-      return withCall(calls, msg.call_id, (call) => ({
+      return withCall(new Map(calls).set(msg.call_id, calls.get(msg.call_id) ?? blankCall(msg.call_id)), msg.call_id, (call) => ({
         ...call,
         from: msg.from_number || call.from,
         startedTs: msg.ts,
@@ -90,7 +94,7 @@ function reduce(calls: Map<string, Call>, msg: Message): Map<string, Call> {
         putLine(call, `o:${String(msg.turn_id)}`, 'Operator', msg.text, msg.final, msg.ts),
       )
     case 'call_ended':
-      return calls.has(msg.call_id) ? withCall(calls, msg.call_id, (call) => ({ ...call, active: false })) : calls
+      return withCall(calls, msg.call_id, (call) => ({ ...call, active: false }))
     default:
       return calls
   }

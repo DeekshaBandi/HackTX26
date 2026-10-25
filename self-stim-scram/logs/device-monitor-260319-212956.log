@@ -1,0 +1,202 @@
+auto detect board:1
+
+#TRIAL 1
+#KEY: 7dfd7237175633cfa3e7bbc8a2c437fd
+#METRICS: samples=808, elapsed_s=28.57, accum_hinf=128.01, avg_ac1=0.46
+
+#TRIAL 2
+#KEY: 5233a386f2b63a7527a3d61e17ade16a
+#METRICS: samples=784, elapsed_s=27.56, accum_hinf=128.03, avg_ac1=0.45
+
+#TRIAL 3
+#KEY: 55932f23684dabb6bfab36a02c666f9c
+#METRICS: samples=800, elapsed_s=28.23, accum_hinf=128.09, avg_ac1=0.43
+
+#TRIAL 4
+#KEY: a5ed26c7bb05da4356c6e26194667fc0
+#METRICS: samples=796, elapsed_s=28.07, accum_hinf=128.15, avg_ac1=0.43
+
+#TRIAL 5
+#KEY: 69037055e70e97ec3dc1d0ce593f4388
+#METRICS: samples=739, elapsed_s=25.66, accum_hinf=128.15, avg_ac1=0.43
+
+#TRIAL 6
+#KEY: f282ecb81bba3bd65ab68f401dda1f57
+#METRICS: samples=755, elapsed_s=26.34, accum_hinf=128.18, avg_ac1=0.48
+
+#TRIAL 7
+#KEY: f2649f32abae9f622290f7c95942f3cb
+#METRICS: samples=743, elapsed_s=25.83, accum_hinf=128.13, avg_ac1=0.44
+
+#TRIAL 8
+#KEY: fc19751177a310d16c96e09ac68e6b17
+#METRICS: samples=796, elapsed_s=28.10, accum_hinf=128.00, avg_ac1=0.44
+
+#TRIAL 9
+#KEY: 75401c5393ddb34bdf337ba99ed56ec6
+#METRICS: samples=767, elapsed_s=26.85, accum_hinf=128.13, avg_ac1=0.44
+
+#TRIAL 10
+#KEY: cdada8f81420f99b958bae612c037f7c
+#METRICS: samples=763, elapsed_s=26.69, accum_hinf=128.09, avg_ac1=0.44
+
+#TRIAL 11
+#KEY: e9b50840b191a3a2a91e1225c9a7f459
+#METRICS: samples=812, elapsed_s=28.76, accum_hinf=128.17, avg_ac1=0.41
+
+#TRIAL 12
+#KEY: 9e752967f58f634ac316744488148e6c
+#METRICS: samples=785, elapsed_s=27.62, accum_hinf=128.16, avg_ac1=0.44
+
+#TRIAL 13
+#KEY: fc6a72df4da51aebc6141e4c9329c34c
+#METRICS: samples=770, elapsed_s=26.99, accum_hinf=128.05, avg_ac1=0.44
+
+#TRIAL 14
+#KEY: e7fb92d311244221d81c81cd988d7156
+#METRICS: samples=771, elapsed_s=27.04, accum_hinf=128.04, avg_ac1=0.43
+
+#TRIAL 15
+#KEY: 596f28c41d2cc87084d060a9e8287aa0
+#METRICS: samples=768, elapsed_s=26.89, accum_hinf=128.01, avg_ac1=0.42
+
+#TRIAL 16
+#KEY: 3f311b179cacdefcaa0348770488f27e
+#METRICS: samples=762, elapsed_s=26.64, accum_hinf=128.13, avg_ac1=0.45
+
+#TRIAL 17
+#KEY: 9676c9e745b12eb57ba1c1e1c1ae7709
+#METRICS: samples=769, elapsed_s=26.95, accum_hinf=128.06, avg_ac1=0.45
+
+#TRIAL 18
+#KEY: d29fe7785467c3edf9c2ff3632fff570
+#METRICS: samples=784, elapsed_s=27.58, accum_hinf=128.12, avg_ac1=0.43
+
+#TRIAL 19
+#KEY: 948696cb88275cdef7da6a24fcedf3f9
+#METRICS: samples=801, elapsed_s=28.30, accum_hinf=128.10, avg_ac1=0.44
+
+#TRIAL 20
+#KEY: 0cddb043e085e2b16ba12fbf7f9b4036
+#METRICS: samples=759, elapsed_s=26.52, accum_hinf=128.02, avg_ac1=0.45
+
+#TRIAL 21
+#KEY: 59a89122e5a540b532a0700dfa7da702
+#METRICS: samples=764, elapsed_s=26.73, accum_hinf=128.01, avg_ac1=0.42
+
+#TRIAL 22
+#KEY: 80297a22a78424ac0fb26e150a0de5c7
+#METRICS: samples=745, elapsed_s=25.95, accum_hinf=128.01, avg_ac1=0.46
+
+#TRIAL 23
+#KEY: 4f53ebdc441ba4f6350505e65ca41a6e
+#METRICS: samples=738, elapsed_s=25.63, accum_hinf=128.17, avg_ac1=0.44
+
+#TRIAL 24
+#KEY: 50482d91f167549cd865427221525b9f
+#METRICS: samples=784, elapsed_s=27.58, accum_hinf=128.16, avg_ac1=0.41
+
+#TRIAL 25
+#KEY: e4056e9445fbc986d607f93fc2f2c7b7
+#METRICS: samples=764, elapsed_s=26.72, accum_hinf=128.15, avg_ac1=0.41
+
+#TRIAL 26
+#KEY: 2ffdb1a9ee06b628dc756e9da5b4c66d
+#METRICS: samples=766, elapsed_s=26.82, accum_hinf=128.01, avg_ac1=0.43
+
+#TRIAL 27
+#KEY: 272763dfdd7932ae598d7d628432e531
+#METRICS: samples=804, elapsed_s=28.43, accum_hinf=128.00, avg_ac1=0.43
+
+#TRIAL 28
+#KEY: 183b59037f39261b86ab6faf8756137a
+#METRICS: samples=809, elapsed_s=28.64, accum_hinf=128.07, avg_ac1=0.42
+
+#TRIAL 29
+#KEY: 5d45f3a0fb4bbc10af47dd2848768106
+#METRICS: samples=758, elapsed_s=26.49, accum_hinf=128.11, avg_ac1=0.44
+
+#TRIAL 30
+#KEY: 414c1155119d4b1def14fb6889291e43
+#METRICS: samples=786, elapsed_s=27.67, accum_hinf=128.01, avg_ac1=0.43
+
+#TRIAL 31
+#KEY: 89880370202e63e82c04c12ee054952e
+#METRICS: samples=765, elapsed_s=26.77, accum_hinf=128.06, avg_ac1=0.42
+
+#TRIAL 32
+#KEY: bf34f9f961f00802a06f2c6a715a7cf2
+#METRICS: samples=827, elapsed_s=29.39, accum_hinf=128.09, avg_ac1=0.44
+
+#TRIAL 33
+#KEY: 42bc3fa2227cf6369463870d1662a039
+#METRICS: samples=765, elapsed_s=26.77, accum_hinf=128.10, avg_ac1=0.42
+
+#TRIAL 34
+#KEY: 7ec019980abc2219b5946cc1e2124eac
+#METRICS: samples=740, elapsed_s=25.73, accum_hinf=128.09, avg_ac1=0.46
+
+#TRIAL 35
+#KEY: 7e34d13b5812357f45dcd6ae9cae9029
+#METRICS: samples=800, elapsed_s=28.26, accum_hinf=128.01, avg_ac1=0.42
+
+#TRIAL 36
+#KEY: c53056fea89b0e14f3b0294ff8625ee3
+#METRICS: samples=787, elapsed_s=27.72, accum_hinf=128.13, avg_ac1=0.44
+
+#TRIAL 37
+#KEY: 7f5cf7fc6053a26e254f78ffc87e0c06
+#METRICS: samples=746, elapsed_s=26.00, accum_hinf=128.06, avg_ac1=0.44
+
+#TRIAL 38
+#KEY: 7bfda909ab33ddc25c2f8a1f52f15874
+#METRICS: samples=786, elapsed_s=27.65, accum_hinf=128.07, avg_ac1=0.42
+
+#TRIAL 39
+#KEY: 3410c2d4368475a492760dab788c518b
+#METRICS: samples=744, elapsed_s=25.91, accum_hinf=128.16, avg_ac1=0.44
+
+#TRIAL 40
+#KEY: 41874641d229d80a2199c5b937b780d7
+#METRICS: samples=802, elapsed_s=28.33, accum_hinf=128.00, avg_ac1=0.44
+
+#TRIAL 41
+#KEY: 2f6592eae0fcf7fb77e96a272e41cd40
+#METRICS: samples=774, elapsed_s=27.17, accum_hinf=128.15, avg_ac1=0.44
+
+#TRIAL 42
+#KEY: 1632e140e175ab30c0d18dcef13ce357
+#METRICS: samples=785, elapsed_s=27.62, accum_hinf=128.13, avg_ac1=0.41
+
+#TRIAL 43
+#KEY: 6791cae15984b9994ebb41728a6defd6
+#METRICS: samples=770, elapsed_s=27.00, accum_hinf=128.12, avg_ac1=0.42
+
+#TRIAL 44
+#KEY: 8590929a87a16db9c71613fe99a633e0
+#METRICS: samples=782, elapsed_s=27.50, accum_hinf=128.17, avg_ac1=0.45
+
+#TRIAL 45
+#KEY: 8fc164d0a397fab033c4ee26ac0e6b92
+#METRICS: samples=768, elapsed_s=26.90, accum_hinf=128.13, avg_ac1=0.49
+
+#TRIAL 46
+#KEY: 4b75d361e133fd04854e3cad1c747151
+#METRICS: samples=749, elapsed_s=26.11, accum_hinf=128.06, avg_ac1=0.46
+
+#TRIAL 47
+#KEY: f0625aa3020db414becb46459f1ae235
+#METRICS: samples=774, elapsed_s=27.14, accum_hinf=128.11, avg_ac1=0.42
+
+#TRIAL 48
+#KEY: b231bc422020cd463ba23fc6e37bc651
+#METRICS: samples=841, elapsed_s=29.99, accum_hinf=128.03, avg_ac1=0.43
+
+#TRIAL 49
+#KEY: f9096cefcf4a3bd1d7cc3607387f7ddb
+#METRICS: samples=755, elapsed_s=26.36, accum_hinf=128.09, avg_ac1=0.43
+
+#TRIAL 50
+#KEY: c0194e415d64b415d6a4d60a0cbe3c52
+#METRICS: samples=756, elapsed_s=26.39, accum_hinf=128.03, avg_ac1=0.44
+#DONE: all trials complete

@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="AIEDH">
+<meta name="theme-color" content="#FDFCEF">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>AIEDH</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FDFCEF; --surface:#EEEDD8; --line:#D9D7BF; --field:#FFFFFF; --field-line:#8A8875;
+  --text:#1C1C1C; --muted:#58574C; --accent:#214E47; --on-accent:#FDFCEF; --soft:#DCE6E1;
+  --ai:#3B2B5A; --ai-soft:#EAD9FB; --link:#214E47; --danger:#7F1C34; --off:#B5B3A0;
+  --page:#E7E5D2;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1C1C1C; --surface:#2A2A28; --line:#3D3D3A; --field:#232322; --field-line:#6E6D67;
+    --text:#FDFCEF; --muted:#C2C0B3; --soft:#1F3A35; --ai:#EAD9FB; --ai-soft:#3A3247;
+    --link:#B9D8CC; --danger:#F7B4C0; --off:#6E6D67; --page:#111111;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{background:var(--page);color:var(--text);font-family:Figtree,system-ui,sans-serif}
+a{color:var(--link)}
+button{font-family:inherit}
+:focus-visible{outline:2px solid #2D62FF;outline-offset:2px}
+#v-chat{position:relative}
+.emoji-hop{position:absolute;left:16px;right:16px;top:88px;z-index:5;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
+.emoji-hop[hidden]{display:none}
+.emoji-stage{display:flex;align-items:flex-end;justify-content:center;gap:18px}
+.emoji-stage.hop{animation:emojiHop 700ms ease-in-out}
+.emoji-face{width:72px;height:72px;border:4px solid #111;border-radius:8px;background:
+  radial-gradient(circle at 28% 42%, #111 0 7px, transparent 8px),
+  radial-gradient(circle at 72% 42%, #111 0 7px, transparent 8px),
+  linear-gradient(#111,#111) 22px 50px/28px 6px no-repeat;
+  image-rendering:pixelated}
+.emoji-side{font-size:28px;line-height:1}
+.emoji-hop p,.emoji-word{margin:0;padding:6px 14px;border-radius:8px;background:#111;color:#fff;font-weight:700;letter-spacing:.08em}
+.emoji-bubble{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 14px;background:transparent;color:var(--text)}
+.emoji-bubble.me,.emoji-bubble.them{background:transparent}
+@keyframes emojiHop{0%{transform:translateY(0)}40%{transform:translateY(-16px)}100%{transform:translateY(0)}}
+
+/* app shell: full screen on a phone, phone-sized frame on a laptop */
+.phone{width:100%;height:100dvh;margin:0 auto;background:var(--bg);color:var(--text);display:flex;flex-direction:column;overflow:hidden;
+  padding-top:env(safe-area-inset-top)}
+@media (min-width:600px){ body{display:grid;place-items:center;padding:24px} .phone{width:390px;height:844px;border-radius:44px;box-shadow:0 0 0 1px var(--line)} }
+.view{display:none;flex:1;min-height:0;flex-direction:column}
+.view.on{display:flex}
+.scroll{flex:1;min-height:0;overflow-y:auto}
+.serif{font-family:'EB Garamond',Georgia,serif;font-weight:500;letter-spacing:-.3px}
+.muted{color:var(--muted)}
+.card{background:var(--surface);border-radius:16px}
+.btn{height:56px;border-radius:14px;background:var(--accent);color:var(--on-accent);font-size:18px;font-weight:600;text-decoration:none;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;width:100%}
+.btn:active{transform:scale(.99)}
+.text-btn{min-height:44px;padding:0 16px;border:none;background:transparent;color:var(--link);font-size:15px;font-weight:600;cursor:pointer;align-self:center}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:var(--ai-soft);color:var(--ai);font-size:14px;font-weight:600}
+.pill.sm{padding:3px 10px;font-size:12px}
+.chip{padding:6px 12px;border-radius:999px;font-size:14px;font-weight:600;border:1.5px solid var(--line);color:var(--muted)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.avatar{border-radius:50%;overflow:hidden;flex-shrink:0}
+.avatar svg{display:block;width:100%;height:100%}
+.field{display:flex;flex-direction:column;gap:8px}
+.field label{font-size:15px;font-weight:700}
+.field input{height:54px;padding:0 18px;border-radius:14px;border:1.5px solid var(--field-line);background:var(--field);color:var(--text);font:inherit;font-size:17px}
+.field input::placeholder{color:#77766A}
+.row{min-height:54px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:16px}
+.row + .row{border-top:1px solid var(--line)}
+.section-title{margin:0 4px 8px;font-size:14px;font-weight:600;color:var(--muted)}
+.tabbar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:10px 12px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--bg)}
+.tabbar a{min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);text-decoration:none;font-size:12px;font-weight:700}
+.tabbar a[aria-current="page"]{color:var(--accent)}
+@media (prefers-color-scheme: dark){ .tabbar a[aria-current="page"]{color:#A6D4C3} }
+.hidden{display:none!important}
+.err{color:var(--danger);font-size:14px;min-height:18px;margin:0}
+
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.appear{animation:rise .6s ease-out both}
+@keyframes breathe{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.1);opacity:.25}}
+.breathe{animation:breathe 4.5s ease-in-out infinite}
+.breathe.late{animation-delay:1.5s}
+@keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@media (prefers-reduced-motion: reduce){*{animation:none!important}}
+
+.bubble{max-width:78%;padding:10px 14px;font-size:16px;line-height:1.4;white-space:pre-wrap;word-wrap:break-word}
+.bubble.them{align-self:flex-start;background:var(--surface);border-radius:20px 20px 20px 6px}
+.bubble.me{align-self:flex-end;background:var(--accent);color:var(--on-accent);border-radius:20px 20px 6px 20px}
+
+.toast{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 10px);z-index:20;max-width:380px;margin:0 auto;
+  background:var(--surface);border:1.5px solid var(--accent);border-radius:16px;padding:14px 16px;display:flex;gap:12px;align-items:center;
+  box-shadow:0 12px 40px rgba(0,0,0,.18);transform:translateY(-160%);transition:transform .45s ease;cursor:pointer}
+.toast.on{transform:none}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast" role="status">
+  <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><circle cx="12" cy="16" r="9" fill="#214E47"/><circle cx="20" cy="16" r="9" fill="#EAD9FB" opacity=".95"/></svg>
+  <div><b style="display:block;font-size:15px">We found someone</b><span class="muted" style="font-size:14px" id="toastText"></span></div>
+</div>
+
+<div class="phone">
+
+<!-- ============ 1. WELCOME ============ -->
+<section class="view" id="v-welcome">
+  <div class="scroll" style="padding:56px 28px 32px;display:flex;flex-direction:column">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:20px;padding-top:16px">
+      <div style="width:112px;height:112px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center" aria-hidden="true">
+        <svg width="64" height="64" viewBox="0 0 32 32"><circle cx="12" cy="16" r="9" fill="#214E47"/><circle cx="20" cy="16" r="9" fill="#EAD9FB" opacity=".95"/></svg>
+      </div>
+      <div style="text-align:center">
+        <h2 class="serif" style="margin:0;font-size:46px">AIEDH</h2>
+        <p class="muted" style="margin:2px 0 0;font-size:15px">said like “aide”</p>
+      </div>
+      <p style="margin:8px 0 0;font-size:19px;line-height:1.45;text-align:center;max-width:310px">Call us, answer a few questions, and we’ll connect you with a student who’s been there.</p>
+    </div>
+    <form id="signinForm" style="margin-top:auto;padding-top:32px;display:flex;flex-direction:column;gap:18px">
+      <div class="field">
+        <label for="email">Student email</label>
+        <input id="email" type="email" placeholder="you@utdallas.edu" autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="phoneIn">Phone number</label>
+        <input id="phoneIn" type="tel" inputmode="tel" placeholder="(214) 555-0134" autocomplete="tel">
+        <p class="muted" style="margin:2px 0 0;font-size:14px;line-height:1.4">We use your school email to check you’re a student. Your phone is how we know it’s you when you call.</p>
+      </div>
+      <p class="err" id="signinErr"></p>
+      <button class="btn" type="submit">Continue</button>
+    </form>
+  </div>
+</section>
+
+<!-- ============ 2. CALL HOME ============ -->
+<section class="view" id="v-home">
+  <div class="scroll" style="padding:48px 24px 24px;display:flex;flex-direction:column;gap:28px">
+    <div>
+      <p class="muted" style="margin:0 0 6px;font-size:16px" id="hey">Hey there</p>
+      <h2 class="serif" style="margin:0;font-size:36px;line-height:1.15">Up late? <em>We’re here.</em></h2>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:18px;padding:16px 0 4px">
+      <div style="position:relative;width:232px;height:232px;display:flex;align-items:center;justify-content:center">
+        <div class="breathe" style="position:absolute;inset:0;border-radius:50%;background:var(--soft)" aria-hidden="true"></div>
+        <a id="callBtn" href="#" style="position:relative;width:188px;height:188px;border-radius:50%;background:var(--accent);color:var(--on-accent);text-decoration:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>
+          <span style="font-size:21px;font-weight:600">Call AIEDH</span>
+        </a>
+      </div>
+      <p class="muted" style="margin:0;font-size:15px;line-height:1.45;text-align:center;max-width:290px">A short call. We ask a few questions, then find a student who gets it.</p>
+    </div>
+    <div style="margin-top:auto;display:flex;flex-direction:column;gap:10px" id="homeStatus"></div>
+  </div>
+  <nav class="tabbar" aria-label="Main" data-tab="home"></nav>
+</section>
+
+<!-- ============ 3. PROFILE ============ -->
+<section class="view" id="v-profile">
+  <div style="padding:28px 24px 14px;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;min-height:40px">
+      <span class="pill hidden" id="callPill"><span class="breathe" style="width:8px;height:8px;border-radius:50%;background:var(--ai)" aria-hidden="true"></span>On a call with AIEDH</span>
+      <span class="pill hidden" id="savedPill"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>Profile saved</span>
+      <span></span>
+    </div>
+    <h2 class="serif" style="margin:0;font-size:36px">Your profile</h2>
+    <p class="muted" style="margin:0;font-size:16px;line-height:1.45">This fills in as you talk to AIEDH.</p>
+  </div>
+  <div class="scroll" style="padding:4px 24px 24px;display:flex;flex-direction:column;gap:10px">
+    <div id="fields" style="display:flex;flex-direction:column;gap:10px" aria-live="polite"></div>
+    <div id="listening" class="muted hidden" style="padding:14px 16px;border-radius:16px;border:1.5px dashed var(--line);display:flex;align-items:center;gap:10px;font-size:15px">
+      <span style="display:flex;gap:4px" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>Listening…
+    </div>
+    <div id="noProfile" class="muted hidden" style="padding:16px;border-radius:16px;border:1.5px dashed var(--line);font-size:15px;line-height:1.45">Nothing here yet. Call AIEDH and your profile will fill in while you talk.</div>
+    <div style="display:flex;flex-direction:column;gap:20px;padding-top:16px">
+      <section>
+        <h3 class="section-title">Account</h3>
+        <div class="card" style="display:flex;flex-direction:column">
+          <div class="row">Email<span class="muted" style="font-size:15px" id="acctEmail">Not added</span></div>
+          <div class="row">Phone<span class="muted" style="font-size:15px" id="acctPhone"></span></div>
+        </div>
+      </section>
+      <section>
+        <h3 class="section-title">Privacy</h3>
+        <div class="card" style="display:flex;flex-direction:column">
+          <div style="padding:14px 16px;display:flex;flex-direction:column;gap:3px;font-size:16px">Who sees my profile<span class="muted" style="font-size:14px;line-height:1.4">Only people you’re matched with. Never your last name or number.</span></div>
+        </div>
+      </section>
+      <div style="display:flex;flex-direction:column;align-items:center">
+        <a href="tel:988" style="min-height:44px;display:flex;align-items:center;font-size:14px">If you’re in crisis, call or text 988</a>
+        <a href="#" id="signout" class="muted" style="min-height:44px;display:flex;align-items:center;font-size:15px;font-weight:600;text-decoration:none">Sign out</a>
+      </div>
+    </div>
+  </div>
+  <nav class="tabbar" aria-label="Main" data-tab="profile"></nav>
+</section>
+
+<!-- ============ 4a. WAITING ============ -->
+<section class="view" id="v-waiting">
+  <div class="scroll" style="padding:56px 24px 24px;display:flex;flex-direction:column;gap:24px">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:22px">
+      <div style="position:relative;width:132px;height:132px" aria-hidden="true">
+        <div class="breathe" style="position:absolute;inset:0;border-radius:50%;background:var(--soft)"></div>
+        <div class="breathe late" style="position:absolute;inset:18px;border-radius:50%;background:var(--ai-soft)"></div>
+        <div style="position:absolute;inset:42px;border-radius:50%;background:var(--accent)"></div>
+      </div>
+      <h2 class="serif" style="margin:0;font-size:33px;line-height:1.2;text-align:center;max-width:310px">We’re looking for someone who <em>gets it.</em></h2>
+      <p class="muted" style="margin:0;font-size:16px;line-height:1.45;text-align:center;max-width:300px">This can take a while. You can close the app. When we find someone, they’ll show up right here.</p>
+    </div>
+    <div class="card" style="padding:6px 18px">
+      <div style="display:flex;align-items:center;gap:12px;min-height:48px;font-size:16px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>Your profile is saved
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;min-height:48px;font-size:16px;font-weight:600;border-top:1px solid var(--line)">
+        <span class="breathe" style="width:20px;height:20px;border-radius:50%;background:var(--accent)" aria-hidden="true"></span>Looking at students like you
+      </div>
+    </div>
+    <section id="resources" class="hidden" style="display:flex;flex-direction:column;gap:10px"></section>
+  </div>
+  <div style="padding:10px 24px 34px;display:flex;flex-direction:column;align-items:center;gap:4px">
+    <a href="tel:988" style="min-height:44px;display:flex;align-items:center;font-size:14px">If you’re in crisis, call or text 988</a>
+    <a href="#home" class="muted" style="min-height:44px;display:flex;align-items:center;font-size:15px;font-weight:600;text-decoration:none">Back home</a>
+  </div>
+</section>
+
+<!-- ============ 4b. MATCHED ============ -->
+<section class="view" id="v-matched">
+  <div class="scroll appear" style="padding:56px 24px 24px;display:flex;flex-direction:column;gap:28px">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:18px">
+      <span class="pill">We found someone</span>
+      <div style="display:flex;align-items:center" aria-hidden="true">
+        <div class="avatar" id="mMe" style="width:96px;height:96px;border:4px solid var(--bg)"></div>
+        <div class="avatar" id="mThem" style="width:120px;height:120px;margin-left:-26px;border:4px solid var(--bg)"></div>
+      </div>
+      <div style="text-align:center">
+        <h2 class="serif" style="margin:0;font-size:42px">Meet <em id="mName"></em></h2>
+        <p class="muted" style="margin:4px 0 0;font-size:16px" id="mSub"></p>
+      </div>
+    </div>
+    <section class="card" style="padding:20px;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <h3 style="margin:0;font-size:18px;font-weight:600">Why you matched</h3>
+        <span class="pill" style="padding:6px 12px;font-size:13px" id="mSim">Really similar</span>
+      </div>
+      <ul id="mWhy" style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:14px;font-size:16px;line-height:1.45"></ul>
+    </section>
+    <section id="mResources" class="hidden" style="display:flex;flex-direction:column;gap:10px"></section>
+    <p class="muted" style="margin:0;font-size:15px;line-height:1.45;text-align:center">AIEDH introduced you, then left so you two can talk.</p>
+  </div>
+  <div style="padding:12px 24px calc(28px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:4px">
+    <a href="#" class="btn" id="sayHi" style="height:58px;font-size:19px">Say hi</a>
+    <a href="#home" class="text-btn" style="display:flex;align-items:center;text-decoration:none">Not now</a>
+  </div>
+</section>
+
+<!-- ============ 4c. CRISIS ============ -->
+<section class="view" id="v-crisis">
+  <div class="scroll" style="padding:64px 24px 24px;display:flex;flex-direction:column;gap:22px">
+    <h2 class="serif" style="margin:0;font-size:34px;line-height:1.2">We’re really glad <em>you called.</em></h2>
+    <p style="margin:0;font-size:17px;line-height:1.5">What you shared matters, and you deserve to talk with someone trained to help right now. The 988 Lifeline is free, open 24/7, and you can call or text.</p>
+    <a class="btn" href="tel:988">Call 988</a>
+    <a class="btn" href="sms:988" style="background:transparent;color:var(--text);border:1.5px solid var(--field-line)">Text 988</a>
+    <p class="muted" style="margin:0;font-size:15px;line-height:1.45">If you’re in danger right now, call 911.</p>
+  </div>
+  <nav class="tabbar" aria-label="Main" data-tab="home"></nav>
+</section>
+
+<!-- ============ 5. CHAT ============ -->
+<section class="view" id="v-chat">
+  <header style="padding:16px 12px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line)">
+    <a href="#matches" aria-label="Back to matches" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--text)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></a>
+    <div class="avatar" id="cAvatar" style="width:40px;height:40px" aria-hidden="true"></div>
+    <div style="flex:1;display:flex;flex-direction:column"><span style="font-size:17px;font-weight:600" id="cName"></span><span class="muted" style="font-size:13px" id="cSchool"></span></div>
+  </header>
+  <div class="scroll" id="thread" style="padding:18px 16px;display:flex;flex-direction:column;gap:10px"></div>
+  <div id="emojiHop" class="emoji-hop" hidden>
+    <div class="emoji-stage">
+      <span class="emoji-side" id="emojiSide"></span>
+      <span class="emoji-face" id="emojiFace"></span>
+      <span class="emoji-side" id="emojiSideR"></span>
+    </div>
+    <p id="emojiWord"></p>
+  </div>
+  <div id="typing" class="muted hidden" style="padding:0 20px 6px;font-size:14px;display:flex;align-items:center;gap:8px">
+    <span style="display:flex;gap:4px" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span><span id="typingName"></span> is typing
+  </div>
+  <p id="sendErr" class="hidden" role="alert" style="margin:0;padding:0 20px 6px;font-size:14px;color:var(--text)">Couldn’t send. Tap Send to try again.</p>
+  <form id="composer" style="padding:10px 12px calc(14px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:8px;border-top:1px solid var(--line)">
+    <label for="msg" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Message</label>
+    <input id="msg" type="text" placeholder="Message" autocomplete="off" style="flex:1;height:46px;padding:0 18px;border-radius:23px;border:1.5px solid var(--field-line);background:var(--field);color:var(--text);font:inherit;font-size:16px">
+    <button type="submit" aria-label="Send" style="width:46px;height:46px;border-radius:50%;border:none;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+  </form>
+</section>
+
+<!-- ============ 6. MATCHES ============ -->
+<section class="view" id="v-matches">
+  <div class="scroll" style="padding:48px 16px 24px;display:flex;flex-direction:column;gap:18px">
+    <div style="padding:0 8px">
+      <h2 class="serif" style="margin:0;font-size:36px">Your matches</h2>
+      <p class="muted" style="margin:6px 0 0;font-size:16px">People you’ve been connected with.</p>
+    </div>
+    <ul id="matchList" style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px"></ul>
+    <div style="margin:8px 8px 0;padding:18px;border-radius:16px;border:1.5px dashed var(--line)">
+      <p style="margin:0 0 6px;font-size:16px;font-weight:600">Want to talk to someone new?</p>
+      <p class="muted" style="margin:0;font-size:15px;line-height:1.45">Call anytime. We’ll find someone who fits what you’re going through now.</p>
+    </div>
+  </div>
+  <nav class="tabbar" aria-label="Main" data-tab="matches"></nav>
+</section>
+
+</div>
+
+<script>
+/* ---------- settings ---------- */
+const HOTLINE = "+16063571925";   // the Twilio phone number judges call: (606) 357-1925
+const API = "";                   // same server as this page; leave empty
+const POLL_MS = 3000;
+// Labels for the campus resources the server finds while a caller waits
+const TOPIC_LABEL = { first_gen: "First-gen", peer_mentoring: "Peer mentoring", clubs: "Clubs", counseling: "Counseling" };
+
+/* ---------- helpers ---------- */
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch(e){} },
+  del(k){ try { localStorage.removeItem(k); } catch(e){} },
+};
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+async function api(path, opts){
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const r = await fetch(API + path, Object.assign({}, opts, { signal: ctl.signal }));
+    if (!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || r.status);
+    return await r.json();
+  } finally { clearTimeout(timer); }
+}
+function fmtPhone(d){ d = d.slice(-10); return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`; }
+function cap(s){ s = String(s||""); return s.charAt(0).toUpperCase() + s.slice(1); }
+function when(ts){
+  if (!ts) return "";
+  const d = new Date(ts), now = new Date();
+  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString([], {hour:"numeric", minute:"2-digit"});
+  if ((now - d) < 6*864e5) return d.toLocaleDateString([], {weekday:"short"});
+  return d.toLocaleDateString([], {month:"short", day:"numeric"});
+}
+
+/* soft generated avatar: two overlapping circles, colors picked from the name */
+const PAL = ["#F6C1A0","#9FD3C7","#A8C8E8","#F2D49B","#E9A28F","#8FC0D8","#E79BB0","#F3D27A","#7FA8E0","#A9D5B5"];
+function avatarSVG(name){
+  let h = 0; for (const c of String(name||"?")) h = (h*31 + c.charCodeAt(0)) >>> 0;
+  const a = PAL[h % PAL.length], b = PAL[(h>>>3) % PAL.length], c = PAL[(h>>>6) % PAL.length];
+  const x1 = 12 + (h % 30), y1 = 12 + ((h>>>4) % 10), x2 = 56 - x1, y2 = 44 - ((h>>>8) % 8);
+  return `<svg viewBox="0 0 56 56"><rect width="56" height="56" fill="${a}"/><circle cx="${x1}" cy="${y1}" r="20" fill="${b}"/><circle cx="${x2}" cy="${y2}" r="18" fill="${c}" opacity=".85"/></svg>`;
+}
+
+/* ---------- tab bar (same on every tab screen) ---------- */
+const TABS = `
+  <a href="#home" data-t="home"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>Call</a>
+  <a href="#matches" data-t="matches"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Matches</a>
+  <a href="#profile" data-t="profile"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>You</a>`;
+document.querySelectorAll(".tabbar").forEach(n => {
+  n.innerHTML = TABS;
+  n.querySelector(`[data-t="${n.dataset.tab}"]`).setAttribute("aria-current", "page");
+});
+
+/* ---------- state ---------- */
+let phone = store.get("aiedh_phone");
+let email = store.get("aiedh_email");
+let status = null;                            // last /app/status response
+let lastState = store.get("aiedh_last_state");
+let chat = null, lastMsgId = 0, chatTimer = null, waitingReply = false, typingSince = 0, chatPolling = false;
+const REQUEST_TIMEOUT_MS = 10000;   // a stalled request gives up so the next poll can try again
+const TYPING_MAX_MS = 25000;        // hide "is typing" if no reply comes
+const myId = () => `ph_${phone.slice(-10)}`;
+
+// Always shown in Matches, with its own thread. Does not call the matching API.
+const HARDCODED_ID = "hardcoded";
+const HARDCODED_MATCH = {
+  chat_id: HARDCODED_ID,
+  name: "Jordan",
+  school: "UT Austin",
+  matched_at: "2026-10-24T22:15:00-05:00",
+  last: { body: "want to grab coffee after your midterm?", from_me: false, from_ai: false, at: "2026-10-25T08:02:00-05:00" },
+};
+const HARDCODED_MSGS = [
+  { id: 1, sender_id: "them", body: "hey — aide said we were both grinding through the same week" },
+  { id: 2, sender_id: "me", body: "yeah, cs exams have been rough" },
+  { id: 3, sender_id: "them", body: "want to grab coffee after your midterm?" },
+];
+
+/* ---------- routing ---------- */
+function route(){
+  if (!phone) return show("welcome");
+  const h = (location.hash || "#home").slice(1);
+  clearInterval(chatTimer);
+  if (h.startsWith("chat/")) return openChat(h.slice(5));
+  if (h === "matches") { show("matches"); return loadMatches(); }
+  if (h === "profile") { show("profile"); return renderProfile(); }
+  if (h === "match") return showMatchState();
+  show("home"); renderHome();
+}
+function show(name){ document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.id === "v-" + name)); }
+window.addEventListener("hashchange", route);
+
+/* ---------- 1. welcome ---------- */
+$("signinForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const d = $("phoneIn").value.replace(/\D/g, "");
+  if (d.length < 10) { $("signinErr").textContent = "Please enter a full phone number."; return; }
+  phone = d; store.set("aiedh_phone", d);
+  email = $("email").value.trim(); if (email) store.set("aiedh_email", email);
+  location.hash = "#home"; route(); poll();
+});
+$("signout").addEventListener("click", (e) => {
+  e.preventDefault();
+  ["aiedh_phone","aiedh_email","aiedh_last_state"].forEach(store.del);
+  location.hash = ""; location.reload();
+});
+$("callBtn").href = "tel:" + HOTLINE;
+
+/* ---------- polling: one status call drives home, profile, waiting, matched ---------- */
+async function poll(){
+  if (!phone) return;
+  try { status = await api(`/app/status?phone=${encodeURIComponent(phone)}`); }
+  catch(e){ return; }
+  if (status.state === "matched" && lastState && lastState !== "matched") {
+    toast(status.match);
+    const h = location.hash;
+    if (h === "" || h === "#home" || h === "#match" || h === "#profile") { location.hash = "#match"; }
+  }
+  lastState = status.state; store.set("aiedh_last_state", status.state);
+  const h = (location.hash || "#home").slice(1);
+  if (h === "home") renderHome();
+  if (h === "profile") renderProfile();
+  if (h === "match") showMatchState();
+}
+setInterval(poll, POLL_MS);
+
+function toast(m){
+  $("toastText").textContent = `Meet ${m.name}${m.school ? " from " + m.school : ""}.`;
+  $("toast").classList.add("on");
+  setTimeout(() => $("toast").classList.remove("on"), 5500);
+}
+$("toast").addEventListener("click", () => { $("toast").classList.remove("on"); location.hash = "#match"; });
+
+/* ---------- 2. home ---------- */
+function renderHome(){
+  const me = status && status.me;
+  $("hey").textContent = me && me.name ? `Hey ${me.name}` : "Hey there";
+  const box = $("homeStatus");
+  if (!status || status.state === "no_calls") { box.innerHTML = ""; return; }
+  if (status.state === "crisis") { box.innerHTML = rowCard("#match", null, "Support is here for you", "Tap to see options"); return; }
+  if (status.state === "waiting") {
+    box.innerHTML = `<h3 style="margin:0;font-size:15px;font-weight:600" class="muted">Last time you called</h3>` +
+      rowCard("#match", null, "Looking for someone who gets it", "We’ll show them here when we find them", true);
+    box.innerHTML += resourcesRow(me);
+    return;
+  }
+  const m = status.match;
+  box.innerHTML = `<h3 style="margin:0;font-size:15px;font-weight:600" class="muted">Last time you called</h3>` +
+    rowCard(m.chat_id ? `#chat/${m.chat_id}` : "#match", m.name, `You matched with ${esc(m.name)}`, `${when(m.matched_at)}${m.school ? " · " + esc(m.school) : ""}`) +
+    resourcesRow(me);
+}
+// "Resources at <school>" on home, for waiting and matched callers. Opens the screen that lists them.
+function resourcesRow(me){
+  const res = (status && status.resources) || [];
+  if (!res.length) return "";
+  const school = me && me.school ? esc(me.school) : "your school";
+  const topics = res.map(r => TOPIC_LABEL[r.topic]).filter(Boolean).join(", ");
+  return rowCard("#match", null, `Resources at ${school}`,
+    `${res.length} place${res.length === 1 ? "" : "s"} on campus${topics ? ": " + topics : ""}`);
+}
+function rowCard(href, name, title, sub, pulse){
+  const icon = name
+    ? `<div class="avatar" style="width:48px;height:48px" aria-hidden="true">${avatarSVG(name)}</div>`
+    : `<div style="width:48px;height:48px;display:grid;place-items:center" aria-hidden="true"><span class="${pulse ? "breathe" : ""}" style="width:22px;height:22px;border-radius:50%;background:var(--accent)"></span></div>`;
+  return `<a href="${href}" class="card appear" style="padding:16px;color:var(--text);text-decoration:none;display:flex;align-items:center;gap:14px">
+    ${icon}
+    <div style="flex:1;display:flex;flex-direction:column;gap:3px"><span style="font-size:17px;font-weight:600">${title}</span><span class="muted" style="font-size:14px">${sub}</span></div>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" class="muted"><path d="M9 6l6 6-6 6"/></svg></a>`;
+}
+
+/* ---------- 3. profile ---------- */
+function chips(label, options, value){
+  const v = String(value || "").toLowerCase();
+  const on = (o) => v.includes(o.toLowerCase()) || (o === "Someone who’s been through it" && /been through|been there/.test(v));
+  return { label, chips: options, picked: options.filter(on), raw: value };
+}
+function renderProfile(){
+  $("acctPhone").textContent = fmtPhone(phone);
+  const me = status && status.me;
+  $("acctEmail").textContent = (me && me.email) || email || "Not added";
+  const box = $("fields");
+  const onCall = !!(me && me.online);
+  $("callPill").classList.toggle("hidden", !onCall);
+  $("savedPill").classList.toggle("hidden", onCall || !me);
+  $("listening").classList.toggle("hidden", !onCall);
+  $("noProfile").classList.toggle("hidden", !!me);
+  if (!me) { box.innerHTML = ""; return; }
+
+  const list = [
+    ["Name", me.name], ["School", me.school], ["Year", me.year && cap(me.year)], ["Major", me.major && cap(me.major)],
+    ["What you’re going through", me.situation],
+  ].filter(([,v]) => v).map(([label, value]) => ({label, value}));
+  if (me.stage) list.push(chips("How long", ["Days","Weeks","Months","Years"], me.stage));
+  if (me.wants) list.push(chips("What you want", ["Vent","Advice","Someone who’s been through it","Company"], me.wants));
+  if (me.interests) {
+    const items = me.interests.split(",").map(s => cap(s.trim())).filter(Boolean);
+    list.push({label:"Interests", chips: items, picked: items});
+  }
+  // Only add cards that are new, so fields "appear" one by one as the call goes
+  const have = new Set([...box.children].map(c => c.dataset.key + "|" + c.dataset.val));
+  const want = list.map(f => f.label + "|" + (f.value || (f.picked||[]).join(",") || f.raw));
+  if (want.join() === [...have].join()) return;
+  box.innerHTML = "";
+  list.forEach((f, i) => {
+    const d = document.createElement("div");
+    d.className = "card" + (have.has(want[i]) ? "" : " appear");
+    d.dataset.key = f.label; d.dataset.val = want[i].split("|")[1];
+    d.style.cssText = "padding:14px 16px;display:flex;flex-direction:column;gap:6px";
+    let inner = `<span class="muted" style="font-size:13px;font-weight:600">${esc(f.label)}</span>`;
+    if (f.chips) {
+      const shown = f.picked.length ? f.chips : f.chips.concat([]);
+      inner += `<div style="display:flex;flex-wrap:wrap;gap:8px;padding-top:2px">` +
+        shown.map(c => `<span class="chip${f.picked.includes(c) ? " on" : ""}">${esc(c)}</span>`).join("") +
+        (f.picked.length ? "" : `<span class="chip on">${esc(cap(f.raw))}</span>`) + `</div>`;
+    } else {
+      inner += `<span style="font-size:17px;line-height:1.4;font-weight:500">${esc(f.value)}</span>`;
+    }
+    d.innerHTML = inner;
+    box.appendChild(d);
+  });
+}
+
+/* ---------- 4. waiting / matched / crisis ---------- */
+function showMatchState(){
+  if (!status) { show("waiting"); return; }
+  if (status.state === "crisis") return show("crisis");
+  if (status.state !== "matched") {
+    show("waiting");
+    const res = status.resources || [];
+    $("resources").classList.toggle("hidden", !res.length);
+    if (res.length) {
+      $("resources").innerHTML = `<h3 class="muted" style="margin:0;font-size:15px;font-weight:600">While you wait${status.me && status.me.school ? ", at " + esc(status.me.school) : ""}</h3>` +
+        resourceCards(res);
+    }
+    return;
+  }
+  const m = status.match, me = status.me || {};
+  show("matched");
+  $("mMe").innerHTML = avatarSVG(me.name || phone);
+  $("mThem").innerHTML = avatarSVG(m.name);
+  $("mName").textContent = m.name || "someone";
+  $("mSub").innerHTML = [m.school].filter(Boolean).map(esc).join(" · ") + (m.demo_student ? ` <span class="pill sm">demo student</span>` : "");
+  $("mSim").textContent = m.similarity || "Really similar";
+  const why = [];
+  if (m.situation) why.push(`You’re going through something similar. ${esc(m.name)} said: “${esc(m.situation)}”`);
+  if (m.stage && me.stage) why.push(`You’ve both been dealing with it for a while (${esc(m.stage)}).`);
+  if (m.shared_interests && m.shared_interests.length) why.push(`You’re both into ${esc(m.shared_interests.join(", "))}.`);
+  if (m.school && me.school && m.school.toLowerCase() === me.school.toLowerCase()) why.push(`You both go to ${esc(m.school)}.`);
+  $("mWhy").innerHTML = why.map(t => `<li style="display:flex;gap:12px"><span style="width:8px;height:8px;margin-top:8px;border-radius:50%;background:var(--accent);flex-shrink:0" aria-hidden="true"></span><span>${t}</span></li>`).join("");
+  $("sayHi").href = m.chat_id ? `#chat/${m.chat_id}` : "#matches";
+  const res = status.resources || [];
+  $("mResources").classList.toggle("hidden", !res.length);
+  $("mResources").innerHTML = res.length
+    ? `<h3 class="muted" style="margin:0;font-size:15px;font-weight:600">Also at ${me.school ? esc(me.school) : "your school"}</h3>` + resourceCards(res)
+    : "";
+}
+// Campus resource cards (waiting and match screens): topic label, title, snippet, opens in a new tab
+function resourceCards(res){
+  return res.map(r => `<a href="${esc(r.link)}" target="_blank" rel="noopener noreferrer" class="card" style="padding:16px;color:var(--text);text-decoration:none;display:flex;align-items:center;gap:14px">
+    <span style="flex:1;display:flex;flex-direction:column;gap:3px">${TOPIC_LABEL[r.topic] ? `<span class="pill sm" style="align-self:flex-start">${TOPIC_LABEL[r.topic]}</span>` : ""}<span style="font-size:16px;font-weight:600">${esc(r.title)}</span><span class="muted" style="font-size:14px">${esc(r.snippet || "")}</span></span>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></a>`).join("");
+}
+
+/* ---------- 5. chat ---------- */
+function openChat(chatId){
+  show("chat");
+  if (chatId === HARDCODED_ID) {
+    chat = Object.assign({}, HARDCODED_MATCH);
+    $("thread").innerHTML = ""; lastMsgId = 0; waitingReply = false;
+    $("sendErr").classList.add("hidden");
+    renderChatHead();
+    renderMessages(HARDCODED_MSGS);
+    return;
+  }
+  if (!chat || chat.chat_id !== chatId) {
+    // Messages and Send only need the chat id, so don't wait on /app/matches for them
+    chat = { chat_id: chatId, name: "Your match", school: "" };
+    $("thread").innerHTML = ""; lastMsgId = 0; waitingReply = false;
+    $("sendErr").classList.add("hidden");
+    api(`/app/matches?phone=${encodeURIComponent(phone)}`).then((rows) => {
+      const found = rows.find(m => m.chat_id === chatId);
+      if (found && chat && chat.chat_id === chatId) { chat = found; renderChatHead(); }
+    }).catch(() => {});
+  }
+  renderChatHead();
+  pollChat();
+  clearInterval(chatTimer);
+  chatTimer = setInterval(pollChat, 2000);
+}
+function renderChatHead(){
+  $("cAvatar").innerHTML = avatarSVG(chat.name);
+  $("cName").innerHTML = esc(chat.name) + (chat.demo_student ? ` <span class="pill sm">demo student</span>` : "");
+  $("cSchool").textContent = chat.school || "";
+  $("msg").placeholder = `Message ${chat.name}`;
+  $("typingName").textContent = chat.name;
+}
+async function pollChat(){
+  if (!chat || chatPolling) return;   // one request at a time, even if the API is slow
+  chatPolling = true;
+  let msgs;
+  try { msgs = await api(`/chats/${chat.chat_id}/messages?after_id=${lastMsgId}`); }
+  catch(e){ msgs = null; }
+  finally { chatPolling = false; }
+  if (waitingReply && Date.now() - typingSince > TYPING_MAX_MS) waitingReply = false;
+  if (!msgs) { $("typing").classList.toggle("hidden", !waitingReply); return; }
+  renderMessages(msgs);
+}
+function renderMessages(msgs){
+  const box = $("thread");
+  for (const m of msgs) {
+    if (m.id <= lastMsgId) continue;   // never show a message twice
+    lastMsgId = m.id;
+    let el;
+    if (m.sender_id === "aiedh") {
+      el = document.createElement("div");
+      el.className = "appear";
+      el.style.cssText = "padding:16px;border-radius:20px;background:var(--ai-soft);display:flex;flex-direction:column;gap:8px";
+      el.innerHTML = `<div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--ai)">
+        <svg width="18" height="18" viewBox="0 0 32 32" aria-hidden="true"><circle cx="12" cy="16" r="9" fill="#214E47"/><circle cx="20" cy="16" r="9" fill="#EAD9FB" opacity=".95"/></svg>AIEDH</div>
+        <p style="margin:0;font-size:16px;line-height:1.45">${esc(m.body)}</p>`;
+    } else if (m.sender_id === "system") {
+      el = document.createElement("p");
+      el.className = "muted"; el.style.cssText = "margin:6px 0;align-self:center;font-size:13px";
+      el.textContent = m.body.replace(/\.$/, "");
+    } else if (m.face) {
+      const look = FACE_LOOK[m.body] || FACE_LOOK.HAPPY;
+      const mine = m.sender_id === "me" || m.sender_id === myId();
+      el = document.createElement("div");
+      el.className = "bubble appear emoji-bubble " + (mine ? "me" : "them");
+      const stage = document.createElement("div");
+      stage.className = "emoji-stage" + (m.hop ? " hop" : "");
+      const side = document.createElement("span");
+      side.className = "emoji-side";
+      side.textContent = look.side;
+      const faceEl = document.createElement("span");
+      faceEl.className = "emoji-face";
+      faceEl.style.backgroundColor = look.skin;
+      faceEl.style.boxShadow = "0 0 0 6px " + look.bg;
+      const word = document.createElement("p");
+      word.className = "emoji-word";
+      word.textContent = m.body;
+      stage.append(side, faceEl, side.cloneNode(true));
+      el.append(stage, word);
+      if (!mine) waitingReply = false;
+    } else {
+      el = document.createElement("div");
+      const mine = m.sender_id === "me" || m.sender_id === myId();
+      el.className = "bubble appear " + (mine ? "me" : "them");
+      el.textContent = m.body;
+      if (!mine) waitingReply = false;
+    }
+    box.appendChild(el);
+  }
+  $("typing").classList.toggle("hidden", !waitingReply);
+  if (msgs.length) box.scrollTop = box.scrollHeight;
+}
+$("composer").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const body = $("msg").value.trim();
+  if (!body || !chat) return;
+  $("msg").value = "";
+  $("sendErr").classList.add("hidden");
+  if (chat.chat_id === HARDCODED_ID) {
+    HARDCODED_MSGS.push({ id: HARDCODED_MSGS.length + 1, sender_id: "me", body });
+    HARDCODED_MATCH.last = { body, from_me: true, from_ai: false, at: new Date().toISOString() };
+    renderMessages(HARDCODED_MSGS);
+    return;
+  }
+  try {
+    await api(`/chats/${chat.chat_id}/messages`, {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ sender_id: myId(), body }),
+    });
+    if (chat.demo_student) { waitingReply = true; typingSince = Date.now(); }
+    pollChat();
+  } catch(err){
+    if (!$("msg").value) $("msg").value = body;   // keep what they typed
+    $("sendErr").classList.remove("hidden");
+  }
+});
+
+/* ---------- 6. matches ---------- */
+async function loadMatches(){
+  let list = [];
+  try { list = await api(`/app/matches?phone=${encodeURIComponent(phone)}`); } catch(e){}
+  list = [HARDCODED_MATCH].concat(list.filter(m => m.chat_id !== HARDCODED_ID));
+  const ul = $("matchList");
+  if (!list.length) {
+    ul.innerHTML = `<li class="muted" style="padding:8px;font-size:15px">No matches yet.</li>`;
+    return;
+  }
+  ul.innerHTML = list.map(m => {
+    const last = m.last;
+    const preview = !last ? "Say hi" : (last.from_ai ? "AIEDH introduced you" : (last.from_me ? "You: " : "") + last.body);
+    const unread = last && !last.from_me && !last.from_ai;
+    return `<li><a href="#chat/${m.chat_id}" style="padding:12px 8px;border-radius:16px;color:var(--text);text-decoration:none;display:flex;align-items:center;gap:14px">
+      <div class="avatar" style="width:54px;height:54px" aria-hidden="true">${avatarSVG(m.name)}</div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+        <div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:17px;font-weight:600">${esc(m.name)}</span><span class="muted" style="font-size:13px">${esc(m.school || "")}</span><span class="muted" style="margin-left:auto;font-size:13px">${when(last ? last.at : m.matched_at)}</span></div>
+        <div style="display:flex;align-items:center;gap:8px"><span class="${unread ? "" : "muted"}" style="flex:1;min-width:0;font-size:15px;${unread ? "font-weight:700;" : ""}white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(preview)}</span>${unread ? `<span style="width:10px;height:10px;border-radius:50%;background:var(--accent);flex-shrink:0" role="img" aria-label="New message"></span>` : ""}</div>
+      </div></a></li>`;
+  }).join("");
+}
+
+/* ---------- device face -> first chat ---------- */
+const FACE_LOOK = {
+  HAPPY:   { bg: "#7ec8ff", skin: "#ffd7b0", side: "☀" },
+  SAD:     { bg: "#9fb4c4", skin: "#ffd7b0", side: "🌧" },
+  ANGRY:   { bg: "#e07a5f", skin: "#ffd7b0", side: "♨" },
+  EXCITED: { bg: "#c9a0ff", skin: "#ffe0c2", side: "★" },
+  SLEEPY:  { bg: "#8fbfa8", skin: "#e6d3b0", side: "Z" },
+  LOVE:    { bg: "#f4a4c4", skin: "#ffd7b0", side: "♥" },
+};
+let lastDeviceEmojiId = 0;
+let deviceEmojiSynced = false;
+let emojiHopTimer = null;
+
+function firstChatId(){ return HARDCODED_ID; }
+
+function playEmojiHop(face){
+  const look = FACE_LOOK[face] || FACE_LOOK.HAPPY;
+  const box = $("emojiHop");
+  const stage = box.querySelector(".emoji-stage");
+  $("emojiFace").style.backgroundColor = look.skin;
+  $("emojiFace").style.boxShadow = "0 0 0 8px " + look.bg;
+  $("emojiSide").textContent = look.side;
+  $("emojiSideR").textContent = look.side;
+  $("emojiWord").textContent = face;
+  box.hidden = false;
+  stage.style.animation = "none";
+  void stage.offsetWidth;
+  stage.style.animation = "emojiHop 700ms ease-in-out";
+  clearTimeout(emojiHopTimer);
+  emojiHopTimer = setTimeout(() => { box.hidden = true; }, 800);
+}
+
+function showJordanThread(){
+  show("chat");
+  chat = Object.assign({}, HARDCODED_MATCH);
+  renderChatHead();
+  $("thread").innerHTML = "";
+  lastMsgId = 0;
+  renderMessages(HARDCODED_MSGS);
+  $("thread").scrollTop = $("thread").scrollHeight;
+}
+
+function deliverDeviceEmoji(face){
+  const msg = { id: Date.now(), sender_id: "me", body: face, face: true, hop: true };
+  HARDCODED_MSGS.push(msg);
+  HARDCODED_MATCH.last = { body: face, from_me: true, from_ai: false, at: new Date().toISOString() };
+  const target = "#chat/" + firstChatId();
+  if ((location.hash || "") !== target) location.hash = target;
+  showJordanThread();
+  msg.hop = false;
+}
+
+async function pollDeviceEmoji(){
+  let data;
+  try { data = await api(`/device/emoji?after=${lastDeviceEmojiId}`); }
+  catch(e){ return; }
+  if (!deviceEmojiSynced) {
+    deviceEmojiSynced = true;
+    lastDeviceEmojiId = (data && data.id) || 0;
+    return;
+  }
+  if (!data || !data.face || data.id <= lastDeviceEmojiId) {
+    if (data.id) lastDeviceEmojiId = Math.max(lastDeviceEmojiId, data.id);
+    return;
+  }
+  lastDeviceEmojiId = data.id;
+  deliverDeviceEmoji(data.face);
+}
+setInterval(pollDeviceEmoji, 1000);
+
+/* ---------- start ---------- */
+route();
+poll();
+</script>
+</body>
+</html>

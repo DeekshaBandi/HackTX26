@@ -1,0 +1,15 @@
+node_modules
+dist
+.DS_Store
+*.local
+.env
+.env.*
+!.env.example
+
+# phone server
+.venv/
+__pycache__/
+*.pyc
+records/
+tts_cache/
+logs/

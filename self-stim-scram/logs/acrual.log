@@ -1,0 +1,16 @@
+auto detect board:1
+
+# --- 128-BIT ENTROPY REACHED ---
+# KEY: 420414ec7947c0ea2c21af4323c5602d1305126c04d6724d0d8aa20340d73c8f
+# USAGE,us_total=4752794
+# USAGE,samples=1443
+# USAGE,us_per_sample=3293
+# USAGE,adc_reads_total=4329
+# USAGE,us_per_bit=37123
+# USAGE,adc_per_bit=33
+# FINAL_ACCUM_HINF=128.0261
+
+Total Wall Time	4.75 Seconds
+Entropy Rate	~27 Bits / Second
+Efficiency	33 ADC Reads per Bit
+CPU Cost	3.29 ms per Sample

@@ -1,0 +1,36 @@
+{
+  "call_id": "CA4ec1a88f88ee10e55dbd666a3d2b42e4",
+  "caller_phone": "+10000000002",
+  "started_at": "2026-10-24T23:46:31-05:00",
+  "ended_at": "2026-10-24T23:49:27-05:00",
+  "phase_reached": "CLOSING",
+  "profile": {
+    "name": "Maya",
+    "school": null,
+    "year": null,
+    "major": null,
+    "email": null,
+    "situation": "Feeling lonely",
+    "themes": [
+      "loneliness"
+    ],
+    "stage": "weeks",
+    "wants": "vent",
+    "ai_use": "weekly when feeling lonely in bed",
+    "interests": null,
+    "timing": "either"
+  },
+  "confidence": {
+    "situation": 0.6,
+    "themes": 0.5,
+    "stage": 0.8,
+    "wants": 0.7
+  },
+  "summary": "Feels lonely since the start of the semester about a month ago. Uses chatbots about weekly when loneliness hits while resting in bed. Wants a good listener to vent to who understands academic pressure.",
+  "crisis": {
+    "level": "none",
+    "reason": ""
+  },
+  "ready_to_match": true,
+  "transcript": []
+}

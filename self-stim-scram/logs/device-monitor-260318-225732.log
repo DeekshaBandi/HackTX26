@@ -1,0 +1,315 @@
+auto detect board:1
+#INFO: WHO_AM_I=0x19
+#PHASE_START,BASELINE,250Hz,+-8G,EMA-residual,UF-min-aggregation
+#NOTE: Replicates Shepherd & Hurley Table 2 method
+phase_id,sample,usec,ch0,ch1,ch2,ch3,ch4,ch5,ch6,w0,w1,w2,w3,w4,w5,w6,hinf0,hinf1,hinf2,hinf3,hinf4,hinf5,hinf6,ac1_0,ac1_1,ac1_2,ac1_3,ac1_4,ac1_5,ac1_6,hinf_total,h0_total,mi_penalty,phase_accum,global_accum,whitener_rdy
+ets Jul 29 2019 12:21:46
+
+rst:0x8 (TG1WDT_SYS_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+auto detect board:1
+#INFO: WHO_AM_I=0x19
+#PHASE_START,BASELINE,250Hz,+-8G,EMA-residual,UF-min-aggregation
+#NOTE: Replicates Shepherd & Hurley Table 2 method
+phase_id,sample,usec,ch0,ch1,ch2,ch3,ch4,ch5,ch6,w0,w1,w2,w3,w4,w5,w6,hinf0,hinf1,hinf2,hinf3,hinf4,hinf5,hinf6,ac1_0,ac1_1,ac1_2,ac1_3,ac1_4,ac1_5,ac1_6,hinf_total,h0_total,mi_penalty,phase_accum,global_accum,whitener_rdy
+ets Jul 29 2019 12:21:46
+
+rst:0x8 (TG1WDT_SYS_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+auto detect board:1
+#INFO: WHO_AM_I=0x19
+#PHASE_START,BASELINE,250Hz,+-8G,EMA-residual,UF-min-aggregation
+#NOTE: Replicates Shepherd & Hurley Table 2 method
+phase_id,sample,usec,ch0,ch1,ch2,ch3,ch4,ch5,ch6,w0,w1,w2,w3,w4,w5,w6,hinf0,hinf1,hinf2,hinf3,hinf4,hinf5,hinf6,ac1_0,ac1_1,ac1_2,ac1_3,ac1_4,ac1_5,ac1_6,hinf_total,h0_total,mi_penalty,phase_accum,global_accum,whitener_rdy
+ets Jul 29 2019 12:21:46
+
+rst:0x8 (TG1WDT_SYS_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+auto detect board:1
+#INFO: WHO_AM_I=0x19
+#PHASE_START,BASELINE,250Hz,+-8G,EMA-residual,UF-min-aggregation
+#NOTE: Replicates Shepherd & Hurley Table 2 method
+phase_id,sample,usec,ch0,ch1,ch2,ch3,ch4,ch5,ch6,w0,w1,w2,w3,w4,w5,w6,hinf0,hinf1,hinf2,hinf3,hinf4,hinf5,hinf6,ac1_0,ac1_1,ac1_2,ac1_3,ac1_4,ac1_5,ac1_6,hinf_total,h0_total,mi_penalty,phase_accum,global_accum,whitener_rdy
+ets Jul 29 2019 12:21:46
+
+rst:0x8 (TG1WDT_SYS_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+auto detect board:1
+#INFO: WHO_AM_I=0x19
+#PHASE_START,BASELINE,250Hz,+-8G,EMA-residual,UF-min-aggregation
+#NOTE: Replicates Shepherd & Hurley Table 2 method
+phase_id,sample,usec,ch0,ch1,ch2,ch3,ch4,ch5,ch6,w0,w1,w2,w3,w4,w5,w6,hinf0,hinf1,hinf2,hinf3,hinf4,hinf5,hinf6,ac1_0,ac1_1,ac1_2,ac1_3,ac1_4,ac1_5,ac1_6,hinf_total,h0_total,mi_penalty,phase_accum,global_accum,whitener_rdy
+ets Jul 29 2019 12:21:46
+
+rst:0x8 (TG1WDT_SYS_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+auto detect board:1
+#INFO: WHO_AM_I=0x19
+#PHASE_START,BASELINE,250Hz,+-8G,EMA-residual,UF-min-aggregation
+#NOTE: Replicates Shepherd & Hurley Table 2 method
+phase_id,sample,usec,ch0,ch1,ch2,ch3,ch4,ch5,ch6,w0,w1,w2,w3,w4,w5,w6,hinf0,hinf1,hinf2,hinf3,hinf4,hinf5,hinf6,ac1_0,ac1_1,ac1_2,ac1_3,ac1_4,ac1_5,ac1_6,hinf_total,h0_total,mi_penalty,phase_accum,global_accum,whitener_rdy
+ets Jul 29 2019 12:21:46
+
+rst:0x8 (TG1WDT_SYS_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+auto detect board:1
+#INFO: WHO_AM_I=0x19
+#PHASE_START,BASELINE,250Hz,+-8G,EMA-residual,UF-min-aggregation
+#NOTE: Replicates Shepherd & Hurley Table 2 method
+phase_id,sample,usec,ch0,ch1,ch2,ch3,ch4,ch5,ch6,w0,w1,w2,w3,w4,w5,w6,hinf0,hinf1,hinf2,hinf3,hinf4,hinf5,hinf6,ac1_0,ac1_1,ac1_2,ac1_3,ac1_4,ac1_5,ac1_6,hinf_total,h0_total,mi_penalty,phase_accum,global_accum,whitener_rdy
+ets Jul 29 2019 12:21:46
+
+rst:0x8 (TG1WDT_SYS_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+auto detect board:1
+#INFO: WHO_AM_I=0x19
+#PHASE_START,BASELINE,250Hz,+-8G,EMA-residual,UF-min-aggregation
+#NOTE: Replicates Shepherd & Hurley Table 2 method
+phase_id,sample,usec,ch0,ch1,ch2,ch3,ch4,ch5,ch6,w0,w1,w2,w3,w4,w5,w6,hinf0,hinf1,hinf2,hinf3,hinf4,hinf5,hinf6,ac1_0,ac1_1,ac1_2,ac1_3,ac1_4,ac1_5,ac1_6,hinf_total,h0_total,mi_penalty,phase_accum,global_accum,whitener_rdy
+ets Jul 29 2019 12:21:46
+
+rst:0x8 (TG1WDT_SYS_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+auto detect board:1
+#INFO: WHO_AM_I=0x19
+#PHASE_START,BASELINE,250Hz,+-8G,EMA-residual,UF-min-aggregation
+#NOTE: Replicates Shepherd & Hurley Table 2 method
+phase_id,sample,usec,ch0,ch1,ch2,ch3,ch4,ch5,ch6,w0,w1,w2,w3,w4,w5,w6,hinf0,hinf1,hinf2,hinf3,hinf4,hinf5,hinf6,ac1_0,ac1_1,ac1_2,ac1_3,ac1_4,ac1_5,ac1_6,hinf_total,h0_total,mi_penalty,phase_accum,global_accum,whitener_rdy
+ets Jul 29 2019 12:21:46
+
+rst:0x8 (TG1WDT_SYS_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+auto detect board:1
+#INFO: WHO_AM_I=0x19
+#PHASE_START,BASELINE,250Hz,+-8G,EMA-residual,UF-min-aggregation
+#NOTE: Replicates Shepherd & Hurley Table 2 method
+phase_id,sample,usec,ch0,ch1,ch2,ch3,ch4,ch5,ch6,w0,w1,w2,w3,w4,w5,w6,hinf0,hinf1,hinf2,hinf3,hinf4,hinf5,hinf6,ac1_0,ac1_1,ac1_2,ac1_3,ac1_4,ac1_5,ac1_6,hinf_total,h0_total,mi_penalty,phase_accum,global_accum,whitener_rdy
+ets Jul 29 2019 12:21:46
+
+rst:0x8 (TG1WDT_SYS_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+auto detect board:1
+#INFO: WHO_AM_I=0x19
+#PHASE_START,BASELINE,250Hz,+-8G,EMA-residual,UF-min-aggregation
+#NOTE: Replicates Shepherd & Hurley Table 2 method
+phase_id,sample,usec,ch0,ch1,ch2,ch3,ch4,ch5,ch6,w0,w1,w2,w3,w4,w5,w6,hinf0,hinf1,hinf2,hinf3,hinf4,hinf5,hinf6,ac1_0,ac1_1,ac1_2,ac1_3,ac1_4,ac1_5,ac1_6,hinf_total,h0_total,mi_penalty,phase_accum,global_accum,whitener_rdy
+ets Jul 29 2019 12:21:46
+
+rst:0x8 (TG1WDT_SYS_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+auto detect board:1
+#INFO: WHO_AM_I=0x19
+#PHASE_START,BASELINE,250Hz,+-8G,EMA-residual,UF-min-aggregation
+#NOTE: Replicates Shepherd & Hurley Table 2 method
+phase_id,sample,usec,ch0,ch1,ch2,ch3,ch4,ch5,ch6,w0,w1,w2,w3,w4,w5,w6,hinf0,hinf1,hinf2,hinf3,hinf4,hinf5,hinf6,ac1_0,ac1_1,ac1_2,ac1_3,ac1_4,ac1_5,ac1_6,hinf_total,h0_total,mi_penalty,phase_accum,global_accum,whitener_rdy
+ets Jul 29 2019 12:21:46
+
+rst:0x8 (TG1WDT_SYS_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+auto detect board:1
+#INFO: WHO_AM_I=0x19
+#PHASE_START,BASELINE,250Hz,+-8G,EMA-residual,UF-min-aggregation
+#NOTE: Replicates Shepherd & Hurley Table 2 method
+phase_id,sample,usec,ch0,ch1,ch2,ch3,ch4,ch5,ch6,w0,w1,w2,w3,w4,w5,w6,hinf0,hinf1,hinf2,hinf3,hinf4,hinf5,hinf6,ac1_0,ac1_1,ac1_2,ac1_3,ac1_4,ac1_5,ac1_6,hinf_total,h0_total,mi_penalty,phase_accum,global_accum,whitener_rdy
+ets Jul 29 2019 12:21:46
+
+rst:0x8 (TG1WDT_SYS_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+auto detect board:1
+#INFO: WHO_AM_I=0x19
+#PHASE_START,BASELINE,250Hz,+-8G,EMA-residual,UF-min-aggregation
+#NOTE: Replicates Shepherd & Hurley Table 2 method
+phase_id,sample,usec,ch0,ch1,ch2,ch3,ch4,ch5,ch6,w0,w1,w2,w3,w4,w5,w6,hinf0,hinf1,hinf2,hinf3,hinf4,hinf5,hinf6,ac1_0,ac1_1,ac1_2,ac1_3,ac1_4,ac1_5,ac1_6,hinf_total,h0_total,mi_penalty,phase_accum,global_accum,whitener_rdy
+ets Jul 29 2019 12:21:46
+
+rst:0x8 (TG1WDT_SYS_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+auto detect board:1
+#INFO: WHO_AM_I=0x19
+#PHASE_START,BASELINE,250Hz,+-8G,EMA-residual,UF-min-aggregation
+#NOTE: Replicates Shepherd & Hurley Table 2 method
+phase_id,sample,usec,ch0,ch1,ch2,ch3,ch4,ch5,ch6,w0,w1,w2,w3,w4,w5,w6,hinf0,hinf1,hinf2,hinf3,hinf4,hinf5,hinf6,ac1_0,ac1_1,ac1_2,ac1_3,ac1_4,ac1_5,ac1_6,hinf_total,h0_total,mi_penalty,phase_accum,global_accum,whitener_rdy
+ets Jul 29 2019 12:21:46
+
+rst:0x8 (TG1WDT_SYS_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+auto detect board:1
+#INFO: WHO_AM_I=0x19
+#PHASE_START,BASELINE,250Hz,+-8G,EMA-residual,UF-min-aggregation
+#NOTE: Replicates Shepherd & Hurley Table 2 method
+phase_id,sample,usec,ch0,ch1,ch2,ch3,ch4,ch5,ch6,w0,w1,w2,w3,w4,w5,w6,hinf0,hinf1,hinf2,hinf3,hinf4,hinf5,hinf6,ac1_0,ac1_1,ac1_2,ac1_3,ac1_4,ac1_5,ac1_6,hinf_total,h0_total,mi_penalty,phase_accum,global_accum,whitener_rdy
+ets Jul 29 2019 12:21:46
+
+rst:0x8 (TG1WDT_SYS_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+auto detect board:1
+#INFO: WHO_AM_I=0x19
+#PHASE_START,BASELINE,250Hz,+-8G,EMA-residual,UF-min-aggregation
+#NOTE: Replicates Shepherd & Hurley Table 2 method
+phase_id,sample,usec,ch0,ch1,ch2,ch3,ch4,ch5,ch6,w0,w1,w2,w3,w4,w5,w6,hinf0,hinf1,hinf2,hinf3,hinf4,hinf5,hinf6,ac1_0,ac1_1,ac1_2,ac1_3,ac1_4,ac1_5,ac1_6,hinf_total,h0_total,mi_penalty,phase_accum,global_accum,whitener_rdy
+ets Jul 29 2019 12:21:46
+
+rst:0x8 (TG1WDT_SYS_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+auto detect board:1
+#INFO: WHO_AM_I=0x19
+#PHASE_START,BASELINE,250Hz,+-8G,EMA-residual,UF-min-aggregation
+#NOTE: Replicates Shepherd & Hurley Table 2 method
+phase_id,sample,usec,ch0,ch1,ch2,ch3,ch4,ch5,ch6,w0,w1,w2,w3,w4,w5,w6,hinf0,hinf1,hinf2,hinf3,hinf4,hinf5,hinf6,ac1_0,ac1_1,ac1_2,ac1_3,ac1_4,ac1_5,ac1_6,hinf_total,h0_total,mi_penalty,phase_accum,global_accum,whitener_rdy
+ets Jul 29 2019 12:21:46
+
+rst:0x8 (TG1WDT_SYS_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+auto detect board:1
+#INFO: WHO_AM_I=0x19
+#PHASE_START,BASELINE,250Hz,+-8G,EMA-residual,UF-min-aggregation
+#NOTE: Replicates Shepherd & Hurley Table 2 method
+phase_id,sample,usec,ch0,ch1,ch2,ch3,ch4,ch5,ch6,w0,w1,w2,w3,w4,w5,w6,hinf0,hinf1,hinf2,hinf3,hinf4,hinf5,hinf6,ac1_0,ac1_1,ac1_2,ac1_3,ac1_4,ac1_5,ac1_6,hinf_total,h0_total,mi_penalty,phase_accum,global_accum,whitener_rdy
+ets Jul 29 2019 12:21:46
+
+rst:0x8 (TG1WDT_SYS_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+auto detect board:1
+#INFO: WHO_AM_I=0x19
+#PHASE_START,BASELINE,250Hz,+-8G,EMA-residual,UF-min-aggregation
+#NOTE: Replicates Shepherd & Hurley Table 2 method
+phase_id,sample,usec,ch0,ch1,ch2,ch3,ch4,ch5,ch6,w0,w1,w2,w3,w4,w5,w6,hinf0,hinf1,hinf2,hinf3,hinf4,hinf5,hinf6,ac1_0,ac1_1,ac1_2,ac1_3,ac1_4,ac1_5,ac1_6,hinf_total,h0_total,mi_penalty,phase_accum,global_accum,whitener_rdy
+ets Jul 29 2019 12:21:46
+
+rst:0x8 (TG1WDT_SYS_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+auto detect board:1
+#INFO: WHO_AM_I=0x19
+#PHASE_START,BASELINE,250Hz,+-8G,EMA-residual,UF-min-aggregation
+#NOTE: Replicates Shepherd & Hurley Table 2 method
+phase_id,sample,usec,ch0,ch1,ch2,ch3,ch4,ch5,ch6,w0,w1,w2,w3,w4,w5,w6,hinf0,hinf1,hinf2,hinf3,hinf4,hinf5,hinf6,ac1_0,ac1_1,ac1_2,ac1_3,ac1_4,ac1_5,ac1_6,hinf_total,h0_total,mi_penalty,phase_accum,global_accum,whitener_rdy
+ets Jul 29 2019 12:21:46
+
+rst:0x8 (TG1WDT_SYS_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4

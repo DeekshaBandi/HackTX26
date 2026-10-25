@@ -1,0 +1,34 @@
+{
+  "call_id": "CA06dcae906509835b2ec6b02f50a81eb5",
+  "caller_phone": "+10000000001",
+  "started_at": "2026-10-24T23:51:20-05:00",
+  "ended_at": "2026-10-24T23:54:06-05:00",
+  "phase_reached": "CLOSING",
+  "profile": {
+    "name": null,
+    "school": "University of Texas at Dallas",
+    "year": "sophomore",
+    "major": "computer science",
+    "email": null,
+    "situation": "Failed an exam and has to drop a class, falling behind and needing an extra semester, feeling very stressed.",
+    "themes": null,
+    "stage": null,
+    "wants": null,
+    "ai_use": "daily, all the time about relationships, meals, everything",
+    "interests": null,
+    "timing": null
+  },
+  "confidence": {
+    "situation": 0.7,
+    "themes": 0.0,
+    "stage": 0.0,
+    "wants": 0.0
+  },
+  "summary": "Failed an exam and needs to drop a class, facing an extra semester to meet major requirements. Feeling very stressed about falling behind. Uses AI chatbots daily for everything including relationships and meals.",
+  "crisis": {
+    "level": "none",
+    "reason": ""
+  },
+  "ready_to_match": false,
+  "transcript": []
+}

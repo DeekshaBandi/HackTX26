@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { LINES } from './data/call.ts'
+import { topPins } from './data/students.ts'
+import { expansionReport } from './lib/expand.ts'
 import { EmbeddingPanel } from './components/EmbeddingPanel.tsx'
 import { EmbeddingView } from './components/EmbeddingView.tsx'
 import { PeopleGraph } from './components/PeopleGraph.tsx'
@@ -12,6 +14,9 @@ export default function App() {
   const [revealedLines, setRevealedLines] = useState(0)
   const [phraseId, setPhraseId] = useState<string | null>(null)
   const [personId, setPersonId] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState(true)
+  const report = useMemo(() => expansionReport(), [])
+  const pins = useMemo(() => topPins(expanded), [expanded])
 
   useEffect(() => {
     if (view !== 'embed') return
@@ -60,6 +65,7 @@ export default function App() {
             />
           ) : (
             <PeopleGraph
+              students={pins}
               selectedId={personId}
               onSelect={(id) => setPersonId(id || null)}
             />
@@ -78,7 +84,17 @@ export default function App() {
             onOpenPeople={() => setView('people')}
           />
         ) : (
-          <PeoplePanel selectedId={personId} onSelect={setPersonId} />
+          <PeoplePanel
+            students={pins}
+            report={report}
+            expanded={expanded}
+            onExpanded={(next) => {
+              setExpanded(next)
+              setPersonId(null)
+            }}
+            selectedId={personId}
+            onSelect={setPersonId}
+          />
         )}
       </div>
     </div>

@@ -505,6 +505,67 @@ blockquote {
 
 .ready p { margin: 0; line-height: 1.45; }
 
+.expand { margin-top: 16px; }
+.query {
+  margin: 8px 0 0;
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.35;
+}
+.compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+.compare button {
+  text-align: left;
+  border: 1px solid var(--line);
+  background: #fffaf4;
+  border-radius: 14px;
+  padding: 10px;
+  color: inherit;
+}
+.compare button[aria-pressed="true"] {
+  border-color: #9a4e24;
+  background: #f8efe6;
+}
+.compare span, .compare em { display: block; color: var(--muted); font-size: 12px; font-style: normal; }
+.compare strong {
+  display: block;
+  margin: 4px 0 2px;
+  font-size: 32px;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.auto ul, .engine-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.auto li, .engine-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(226, 211, 191, 0.8);
+  font-size: 13px;
+}
+.engine-list li { display: block; }
+.engine-list p { margin: 4px 0 0; font-size: 13px; line-height: 1.4; }
+.auto em { color: var(--terra); font-weight: 700; }
+.code-block {
+  margin: 8px 0 0;
+  padding: 10px;
+  border-radius: 12px;
+  background: #2c261f;
+  color: #f6efe4;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
 @media (max-width: 980px) {
   .header { flex-wrap: wrap; }
   .brand-meta { margin-left: 0; }

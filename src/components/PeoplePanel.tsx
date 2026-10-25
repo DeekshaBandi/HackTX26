@@ -1,22 +1,31 @@
 import { LINES } from '../data/call.ts'
-import { CALLER, RANKED, STUDENTS, scoreMath, type Student } from '../data/students.ts'
+import { CALLER, scoreMath, type Student } from '../data/students.ts'
+import type { ExpansionReport } from '../lib/expand.ts'
+import { ExpandCompare } from './ExpandCompare.tsx'
 
 type Props = {
+  students: Student[]
+  report: ExpansionReport
+  expanded: boolean
+  onExpanded: (expanded: boolean) => void
   selectedId: string | null
   onSelect: (id: string) => void
 }
 
-export function PeoplePanel({ selectedId, onSelect }: Props) {
-  const student = STUDENTS.find((item) => item.id === selectedId) ?? null
+export function PeoplePanel({ students, report, expanded, onExpanded, selectedId, onSelect }: Props) {
+  const student = students.find((item) => item.id === selectedId) ?? null
   const isYou = selectedId === 'you'
+  const bestId = students[0]?.id
 
   return (
     <aside className="panel">
       <p className="kicker">People map</p>
       <h2>Who this call sits near</h2>
       <p className="lede">
-        Ten students from the past week. Names and schools stay off this screen. Distance, line thickness, and the arrows leaving you all follow the same score.
+        Top 10 of {report.total.toLocaleString()} students in the file. Names and schools stay off this screen. The map is using {expanded ? 'the expanded search' : 'the words they actually finished'}.
       </p>
+
+      <ExpandCompare report={report} expanded={expanded} onChange={onExpanded} />
 
       <details className="call-fold">
         <summary>The call</summary>
@@ -40,7 +49,7 @@ export function PeoplePanel({ selectedId, onSelect }: Props) {
           <span>YOU</span>
           <strong>live</strong>
         </button>
-        {RANKED.map((item) => (
+        {students.map((item) => (
           <button
             key={item.id}
             type="button"
@@ -62,7 +71,7 @@ export function PeoplePanel({ selectedId, onSelect }: Props) {
       )}
 
       {isYou && <YouCard />}
-      {student && <StudentCard student={student} />}
+      {student && <StudentCard student={student} best={student.id === bestId} />}
     </aside>
   )
 }
@@ -87,8 +96,7 @@ function YouCard() {
   )
 }
 
-function StudentCard({ student }: { student: Student }) {
-  const best = student.id === RANKED[0].id
+function StudentCard({ student, best }: { student: Student; best: boolean }) {
   return (
     <article className="detail">
       <header className="detail-head">
@@ -116,11 +124,11 @@ function StudentCard({ student }: { student: Student }) {
       <blockquote>{student.summary}</blockquote>
 
       <h4>Why this score</h4>
-      <p className="formula">Score = 0.5 topic + 0.3 emotion + 0.2 what they asked for</p>
+      <p className="formula">Score = 0.5 words they said + 0.3 expanded phrases + 0.2 same major</p>
       <ul className="why-list">
         <li>
           <div className="part-top">
-            <span>Topic overlap</span>
+            <span>Words they said</span>
             <span>{student.parts.topic.toFixed(2)}</span>
           </div>
           <div className="track"><span style={{ width: `${student.parts.topic * 100}%` }} /></div>
@@ -128,7 +136,7 @@ function StudentCard({ student }: { student: Student }) {
         </li>
         <li>
           <div className="part-top">
-            <span>Emotion</span>
+            <span>Expanded phrases</span>
             <span>{student.parts.emotion.toFixed(2)}</span>
           </div>
           <div className="track"><span style={{ width: `${student.parts.emotion * 100}%` }} /></div>
@@ -136,7 +144,7 @@ function StudentCard({ student }: { student: Student }) {
         </li>
         <li>
           <div className="part-top">
-            <span>What they asked for</span>
+            <span>Same major</span>
             <span>{student.parts.ask.toFixed(2)}</span>
           </div>
           <div className="track"><span style={{ width: `${student.parts.ask * 100}%` }} /></div>

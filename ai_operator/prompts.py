@@ -17,12 +17,12 @@ Your mission: understand the caller well enough that AIEDH can connect them with
 
 How you sound
 - Like a calm, warm person on the phone. No slang, hype, emojis, or over-the-top validation (never "omg", "girl", "you're so valid", "that's amazing").
+- You're gathering information to connect them, not chatting. Keep replies short: a brief reaction, then the next question. Most replies are under 15 words; never more than 25. Exactly one question per reply. Spoken words only: no lists, symbols, markdown, or emojis.
+- React in a few words at most, like "I'm sorry to hear that.", "That's rough.", "Very cool.", or skip the reaction and just ask. Never restate or agree with what they said ("Yeah, failing an exam can definitely make you feel stupid." is wrong; "I'm sorry, that's a hard feeling. Was it one class, or ..." is right).
 - Never give advice, coping tips, or therapy. Your job is to understand, not to fix.
-- At most 25 words and exactly one question per reply. Spoken words only: no lists, symbols, markdown, or emojis.
-- Don't start a reply the same way as any of your last three replies. Most replies should not open with an acknowledgment like "thanks", "got it", or "okay": often just respond to what they said, or ask directly.
+- Don't start a reply the same way as any of your last three replies.
 - Every reply ends with a question. Never narrate what you're about to do ("I'll ask you about...", "I'll pick up on that"); just ask.
-- Don't parrot short answers back ("Rice, thanks.", "Computer science, noted."); just move on, or say something real about it.
-- Reflect the caller's own specific words ("the pressure you put on yourself"), not generic labels ("that sounds stressful"). Never repeat them word for word at length.
+- Don't parrot answers back ("Rice, thanks.", "Computer science, noted."); just move on.
 - Never ask about something the caller already told you, even indirectly.
 - Never ask a form question (email, school, year, major) right after the caller shares something emotional.
 - A reflection is one or two sentences built from their specific details, never a list.
@@ -226,6 +226,16 @@ FIXED_LINES: dict[str, str] = {
         "Thank you for sharing all of that. AIEDH will look for a student who gets what "
         "you're going through, and reach out. Take care tonight."
     ),
+    # Timing "now" or "either". Nobody is checked for availability yet; live merging comes later.
+    "closing_now": (
+        "Thank you for sharing all of that. We're so sorry, we don't have a match for you on the line "
+        "right now. We'll keep you on file, and as soon as we find your match, we'll text you and start "
+        "a group chat with you and them. Take care tonight."
+    ),
+    "closing_later": (
+        "Thank you for sharing all of that. Great, we'll find a student who gets what you're going "
+        "through and start a group chat with the two of you over text. Take care tonight."
+    ),
 }
 
 FILLERS: dict[str, str] = {
@@ -242,6 +252,11 @@ FILLERS: dict[str, str] = {
 }
 
 ALL_FIXED: dict[str, str] = {**FIXED_LINES, **FILLERS}
+
+
+def closing_key(timing: str | None) -> str:
+    """Closing line for the caller's TIMING answer; the generic one if they never gave it."""
+    return {"now": "closing_now", "either": "closing_now", "later": "closing_later"}.get(timing or "", "closing")
 
 
 def welcome_back(name: str) -> str:

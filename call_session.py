@@ -39,7 +39,7 @@ from typing import Any
 
 from ai_operator.brain import Package, Reply
 from ai_operator.conversation import Conversation, TurnPlan
-from ai_operator.prompts import ALL_FIXED, FILLERS
+from ai_operator.prompts import ALL_FIXED, FILLERS, closing_key
 from ai_operator.state import CallState, Phase
 from tts import SAMPLE_RATE, AudioChunk, FixedAudio, TTSProvider, Utterance, cut_to_word, duration_ms
 
@@ -898,7 +898,7 @@ class CallSession:
         if result.crisis_now:
             self._crisis_now()
         elif result.closing_now:
-            self._play_fixed("closing", end_call=True)
+            self._play_fixed(closing_key(self.conv.state.profile.get("timing")), end_call=True)
         elif not self.player.busy:
             self._arm_silence()
 

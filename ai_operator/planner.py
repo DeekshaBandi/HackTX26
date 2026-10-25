@@ -466,9 +466,8 @@ def move_goal(state: CallState, move: str) -> str:
         goal = ("Ask what would make another student the right person for them, framed naturally, like: "
                 '"If we found you someone tonight, what would make them the right person?"')
     elif move == LET_THEM_TALK:
-        goal = ("They're in the middle of something big. Briefly reflect one specific thing they said, "
-                'in their words, and invite them to keep going, like "Missing them that much is a lot. '
-                'What else has it been like?" No new topic.')
+        goal = ("They're in the middle of something big. In a few words, invite them to keep going, "
+                'like "That\'s a lot. What else has it been like?" No new topic.')
     elif move == ASK_AI_USE:
         goal = 'Ask, naturally: "What do you usually end up talking to the chatbot about?"'
     else:

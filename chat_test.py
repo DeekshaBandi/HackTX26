@@ -635,7 +635,7 @@ async def selftest() -> int:
     p2 = conv.plan("Yes that's correct.")
     conv.commit(p2)
     check(st.profile["email"] == "dal060092@utdallas.edu", f"email committed by code -> {st.profile['email']}")
-    check(st.email_done and p2.fixed == "closing", f"then the closing ({p2.fixed})")
+    check(st.email_done and p2.fixed.startswith("closing"), f"then the closing ({p2.fixed})")
     st2 = CallState(call_id="b1b")
     st2.profile.update(school="Some College")
     conv2 = Conversation(st2, ScriptedEngine([]))

@@ -26,7 +26,7 @@ from typing import Any
 from . import planner
 from .brain import Package, Reply, ReplyEngine
 from .planner import ASK, PRE_CLOSING_GOAL, REINTRO_GOAL, SAFETY_GOAL, WRAP
-from .prompts import TurnContext, is_ack_opener, local_time_str, welcome_back
+from .prompts import TurnContext, closing_key, is_ack_opener, local_time_str, welcome_back
 from .safety import is_yes, safety_yes, tripwire
 from .state import CONF_FIELDS, IDENTITY_FIELDS, CallState, Phase
 
@@ -155,7 +155,7 @@ class Conversation:
             p.notes.append("CRISIS: fixed follow-up line, no model call")
             return p
         if s.phase is Phase.CLOSING:
-            p.fixed = "closing"
+            p.fixed = closing_key(s.profile.get("timing"))
             p.end_call = True
             return p
 
@@ -247,7 +247,7 @@ class Conversation:
             return p
 
         if phase is Phase.CLOSING:
-            p.fixed = "closing"
+            p.fixed = closing_key(draft.profile.get("timing"))
             p.end_call = True
             return p
 

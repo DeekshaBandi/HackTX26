@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ForceGraph3D from 'react-force-graph-3d'
 import * as THREE from 'three'
-import { STUDENTS } from '../data/students.ts'
+import type { Student } from '../data/students.ts'
 import { labelTexture, makeMapTexture, personTexture } from '../lib/draw.ts'
 
 type GraphNode = {
@@ -17,6 +17,7 @@ type GraphNode = {
 }
 
 type Props = {
+  students: Student[]
   selectedId: string | null
   onSelect: (id: string) => void
 }
@@ -27,7 +28,7 @@ function measure(el: HTMLElement | null) {
   return { w: Math.max(rect.width, 200), h: Math.max(rect.height, 200) }
 }
 
-export function PeopleGraph({ selectedId, onSelect }: Props) {
+export function PeopleGraph({ students, selectedId, onSelect }: Props) {
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const fgRef = useRef<any>(null)
   const selectedRef = useRef(selectedId)
@@ -77,7 +78,7 @@ export function PeopleGraph({ selectedId, onSelect }: Props) {
     }
     const nodes: GraphNode[] = [
       you,
-      ...STUDENTS.map((student) => ({
+      ...students.map((student) => ({
         id: student.id,
         label: `${student.short} · ${student.score}`,
         color: student.color,
@@ -89,13 +90,13 @@ export function PeopleGraph({ selectedId, onSelect }: Props) {
         fz: student.z,
       })),
     ]
-    const links = STUDENTS.map((student) => ({
+    const links = students.map((student) => ({
       source: 'you',
       target: student.id,
       score: student.score,
     }))
     return { nodes, links }
-  }, [])
+  }, [students])
 
   const nodeThreeObject = useCallback((node: GraphNode) => {
     const isYou = node.id === 'you'
@@ -180,7 +181,7 @@ export function PeopleGraph({ selectedId, onSelect }: Props) {
 
     const flow = new THREE.Group()
     const cones: { mesh: THREE.Mesh; dir: THREE.Vector3; len: number; offset: number; id: string; opacity: number }[] = []
-    for (const student of STUDENTS) {
+    for (const student of students) {
       const end = new THREE.Vector3(student.x, 0, student.z)
       const len = end.length()
       const dir = end.clone().normalize()
@@ -261,7 +262,7 @@ export function PeopleGraph({ selectedId, onSelect }: Props) {
         }
       })
     }
-  }, [ready])
+  }, [ready, students])
 
   return (
     <div

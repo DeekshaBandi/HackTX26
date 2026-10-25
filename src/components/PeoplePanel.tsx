@@ -1,22 +1,75 @@
 import { LINES } from '../data/call.ts'
-import { CALLER, RANKED, STUDENTS, scoreMath, type Student } from '../data/students.ts'
+import { CALLER, scoreMath, type Student } from '../data/students.ts'
+import type { ExpansionReport } from '../lib/expand.ts'
+import { SEARCH_STEPS, serpCallBudget, type LiveEngine } from '../lib/serpapiLive.ts'
+import { ExpandCompare } from './ExpandCompare.tsx'
 
 type Props = {
+  ready: boolean
+  calls: LiveEngine[]
+  students: Student[]
+  report: ExpansionReport
+  expanded: boolean
+  onExpanded: (expanded: boolean) => void
   selectedId: string | null
   onSelect: (id: string) => void
 }
 
-export function PeoplePanel({ selectedId, onSelect }: Props) {
-  const student = STUDENTS.find((item) => item.id === selectedId) ?? null
+export function PeoplePanel({ ready, calls, students, report, expanded, onExpanded, selectedId, onSelect }: Props) {
+  const student = students.find((item) => item.id === selectedId) ?? null
   const isYou = selectedId === 'you'
+  const bestId = students[0]?.id
 
   return (
     <aside className="panel">
       <p className="kicker">People map</p>
       <h2>Who this call sits near</h2>
-      <p className="lede">
-        Ten students from the past week. Names and schools stay off this screen. Distance, line thickness, and the arrows leaving you all follow the same score.
-      </p>
+      {!ready && (
+        <>
+          <p className="load-word">Loading</p>
+          <p className="lede">
+            Scores and distances stay hidden until the embedding is filed and SerpAPI returns the expansion phrases.
+          </p>
+        </>
+      )}
+
+      <CallReceipt calls={calls} />
+
+      {ready && (
+        <>
+          <p className="lede">
+            Top 10 of {report.total.toLocaleString()} students in the file. Names and schools stay off this screen.
+            {` Closer to the center means a higher score from ${expanded ? 'the call plus words inside the SerpAPI phrases' : 'only the words they finished'}.`}
+          </p>
+          <ExpandCompare report={report} expanded={expanded} onChange={onExpanded} />
+          <h4>Example phrases</h4>
+          <p className="note">The whole suggestion is rarely in the file, so that count stays 0. Scores use the words inside the suggestion that do appear.</p>
+          {report.wordHits.length > 0 && (
+            <ul className="auto-list">
+              {report.wordHits.slice(0, 8).map((word) => (
+                <li key={word.text}>
+                  <span>{word.text}</span>
+                  <em>{word.hits}</em>
+                  <small>word in the file</small>
+                </li>
+              ))}
+            </ul>
+          )}
+          {report.examples.length === 0 ? (
+            <p className="note">The search returned no expansion phrases.</p>
+          ) : (
+            <ul className="auto-list">
+              {report.examples.slice(0, 10).map((phrase) => (
+                <li key={`${phrase.source}-${phrase.text}`}>
+                  <span>{phrase.text}</span>
+                  <em>{phrase.hits}</em>
+                  <small>{phrase.source}</small>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
 
       <details className="call-fold">
         <summary>The call</summary>
@@ -30,7 +83,8 @@ export function PeoplePanel({ selectedId, onSelect }: Props) {
         </ol>
       </details>
 
-      <div className="chips" role="listbox" aria-label="Students">
+      {ready && (
+        <div className="chips" role="listbox" aria-label="Students">
         <button
           type="button"
           className="chip"
@@ -40,7 +94,7 @@ export function PeoplePanel({ selectedId, onSelect }: Props) {
           <span>YOU</span>
           <strong>live</strong>
         </button>
-        {RANKED.map((item) => (
+        {students.map((item) => (
           <button
             key={item.id}
             type="button"
@@ -53,8 +107,9 @@ export function PeoplePanel({ selectedId, onSelect }: Props) {
           </button>
         ))}
       </div>
+      )}
 
-      {!student && !isYou && (
+      {ready && !student && !isYou && (
         <div className="empty-card">
           <p>Click a pin, or a chip above.</p>
           <p>The closest pin is the best match. Arrows travel outward from you the whole time.</p>
@@ -62,8 +117,36 @@ export function PeoplePanel({ selectedId, onSelect }: Props) {
       )}
 
       {isYou && <YouCard />}
-      {student && <StudentCard student={student} />}
+      {student && <StudentCard student={student} best={student.id === bestId} />}
     </aside>
+  )
+}
+
+function CallReceipt({ calls }: { calls: LiveEngine[] }) {
+  const ordered = SEARCH_STEPS.map((step) => calls.find((call) => call.id === step.id)).filter((call) => call != null)
+  const budget = serpCallBudget()
+  return (
+    <div className="receipt">
+      <h4>SerpAPI</h4>
+      <p className="note">
+        {budget.used} of {budget.limit} uncached calls used. Cached replies do not move the plan counter, so these requests skip the cache. Nothing is loaded from a saved response.
+      </p>
+      <ul>
+        {ordered.map((call) => (
+          <li key={call.id}>
+            <div className="part-top">
+              <span>{call.label}</span>
+              <span>{call.receipt?.status ?? 'No response'}</span>
+            </div>
+            <p>
+              {call.receipt
+                ? `${call.receipt.createdAt} · ${call.receipt.seconds == null ? '' : `${call.receipt.seconds.toFixed(2)}s · `}${call.receipt.id}`
+                : call.error}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 
@@ -87,8 +170,7 @@ function YouCard() {
   )
 }
 
-function StudentCard({ student }: { student: Student }) {
-  const best = student.id === RANKED[0].id
+function StudentCard({ student, best }: { student: Student; best: boolean }) {
   return (
     <article className="detail">
       <header className="detail-head">
@@ -116,11 +198,11 @@ function StudentCard({ student }: { student: Student }) {
       <blockquote>{student.summary}</blockquote>
 
       <h4>Why this score</h4>
-      <p className="formula">Score = 0.5 topic + 0.3 emotion + 0.2 what they asked for</p>
+      <p className="formula">Score = 0.5 words they said + 0.3 expanded phrases + 0.2 same major</p>
       <ul className="why-list">
         <li>
           <div className="part-top">
-            <span>Topic overlap</span>
+            <span>Words they said</span>
             <span>{student.parts.topic.toFixed(2)}</span>
           </div>
           <div className="track"><span style={{ width: `${student.parts.topic * 100}%` }} /></div>
@@ -128,7 +210,7 @@ function StudentCard({ student }: { student: Student }) {
         </li>
         <li>
           <div className="part-top">
-            <span>Emotion</span>
+            <span>Expanded phrases</span>
             <span>{student.parts.emotion.toFixed(2)}</span>
           </div>
           <div className="track"><span style={{ width: `${student.parts.emotion * 100}%` }} /></div>
@@ -136,7 +218,7 @@ function StudentCard({ student }: { student: Student }) {
         </li>
         <li>
           <div className="part-top">
-            <span>What they asked for</span>
+            <span>Same major</span>
             <span>{student.parts.ask.toFixed(2)}</span>
           </div>
           <div className="track"><span style={{ width: `${student.parts.ask * 100}%` }} /></div>

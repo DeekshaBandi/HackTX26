@@ -1,25 +1,48 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { LINES } from './data/call.ts'
+import { topPins } from './data/students.ts'
+import { expansionReport, type SearchPhrase } from './lib/expand.ts'
+import { phrasesFromEngines, runSerpApiExpansion, type LiveEngine } from './lib/serpapiLive.ts'
 import { EmbeddingPanel } from './components/EmbeddingPanel.tsx'
 import { EmbeddingView } from './components/EmbeddingView.tsx'
+import { MapLoading } from './components/MapLoading.tsx'
 import { PeopleGraph } from './components/PeopleGraph.tsx'
 import { PeoplePanel } from './components/PeoplePanel.tsx'
 
-type View = 'embed' | 'people'
-
 export default function App() {
-  const [view, setView] = useState<View>('embed')
   const [revealedLines, setRevealedLines] = useState(0)
   const [phraseId, setPhraseId] = useState<string | null>(null)
   const [personId, setPersonId] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState(true)
+  const [searchDone, setSearchDone] = useState<LiveEngine[]>([])
+  const [searchPhrases, setSearchPhrases] = useState<SearchPhrase[] | null>(null)
+  const [embedDone, setEmbedDone] = useState(false)
+  const phraseTexts = useMemo(() => (searchPhrases ?? []).map((phrase) => phrase.text), [searchPhrases])
+  const report = useMemo(() => expansionReport(searchPhrases ?? []), [searchPhrases])
+  const pins = useMemo(() => topPins(expanded, phraseTexts), [expanded, phraseTexts])
+  const mapReady = embedDone && searchPhrases !== null
 
   useEffect(() => {
-    if (view !== 'embed') return
-    if (revealedLines >= LINES.length) return
+    if (revealedLines >= LINES.length) {
+      setEmbedDone(true)
+      return
+    }
     const delay = revealedLines === 0 ? 700 : 1900
     const id = window.setTimeout(() => setRevealedLines((count) => count + 1), delay)
     return () => window.clearTimeout(id)
-  }, [view, revealedLines])
+  }, [revealedLines])
+
+  useEffect(() => {
+    let cancelled = false
+    runSerpApiExpansion((row) => {
+      if (!cancelled) setSearchDone((rows) => [...rows, row])
+    }).then((rows) => {
+      if (!cancelled) setSearchPhrases(phrasesFromEngines(rows))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return (
     <div className="shell">
@@ -29,57 +52,60 @@ export default function App() {
           <span className="brand-name">AIEDH</span>
           <span className="brand-sub">Judge</span>
         </div>
-        <div className="switch" role="tablist" aria-label="Visualizations">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === 'embed'}
-            onClick={() => setView('embed')}
-          >
-            Embedding
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === 'people'}
-            onClick={() => setView('people')}
-          >
-            People map
-          </button>
-        </div>
         <p className="brand-meta">Sample data · Sat, Oct 24</p>
       </header>
 
-      <div className="stage">
-        <div className="stage-main">
-          {view === 'embed' ? (
+      <div className="pair">
+        <section className="column">
+          <div className="stage-main">
             <EmbeddingView
               revealedLines={revealedLines}
               selectedId={phraseId}
               onSelect={setPhraseId}
             />
-          ) : (
-            <PeopleGraph
-              selectedId={personId}
-              onSelect={(id) => setPersonId(id || null)}
-            />
-          )}
-        </div>
-
-        {view === 'embed' ? (
+          </div>
           <EmbeddingPanel
             revealedLines={revealedLines}
             selectedId={phraseId}
             onSelect={setPhraseId}
+            nearest={mapReady ? { label: pins[0].label, score: pins[0].score } : null}
             onReplay={() => {
               setPhraseId(null)
               setRevealedLines(0)
             }}
-            onOpenPeople={() => setView('people')}
           />
-        ) : (
-          <PeoplePanel selectedId={personId} onSelect={setPersonId} />
-        )}
+        </section>
+
+        <section className="column">
+          <div className="stage-main">
+            {mapReady ? (
+              <PeopleGraph
+                students={pins}
+                selectedId={personId}
+                onSelect={(id) => setPersonId(id || null)}
+              />
+            ) : (
+              <MapLoading
+                doneIds={searchDone.map((row) => row.id)}
+                embedStep={revealedLines}
+                searchBack={searchPhrases !== null}
+              />
+            )}
+          </div>
+          <PeoplePanel
+            ready={mapReady}
+            calls={searchDone}
+            students={pins}
+            report={report}
+            expanded={expanded}
+            onExpanded={(next) => {
+              setExpanded(next)
+              setPersonId(null)
+            }}
+            selectedId={personId}
+            onSelect={setPersonId}
+          />
+        </section>
       </div>
     </div>
   )

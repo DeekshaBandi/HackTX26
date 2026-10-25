@@ -1,5 +1,4 @@
 import { EMBED_WHY, LINES, TOKENS, axisById } from '../data/call.ts'
-import { BEST } from '../data/students.ts'
 
 const EMOTION_COLOR: Record<string, string> = {
   anxious: '#9a3412',
@@ -14,10 +13,10 @@ type Props = {
   selectedId: string | null
   onSelect: (id: string | null) => void
   onReplay: () => void
-  onOpenPeople: () => void
+  nearest: { label: string; score: number } | null
 }
 
-export function EmbeddingPanel({ revealedLines, selectedId, onSelect, onReplay, onOpenPeople }: Props) {
+export function EmbeddingPanel({ revealedLines, selectedId, onSelect, onReplay, nearest }: Props) {
   const line = revealedLines > 0 ? LINES[revealedLines - 1] : null
   const token = TOKENS.find((item) => item.id === selectedId) ?? null
   const done = revealedLines >= LINES.length
@@ -108,11 +107,10 @@ export function EmbeddingPanel({ revealedLines, selectedId, onSelect, onReplay, 
       {done && (
         <div className="ready">
           <p>
-            Filed. On the people map this point sits nearest {BEST.label}, compatibility {BEST.score}.
+            {nearest
+              ? `Filed. The people map on the right sits this point nearest ${nearest.label}, compatibility ${nearest.score}.`
+              : 'Filed. The people map is still loading the search.'}
           </p>
-          <button type="button" className="solid-btn" onClick={onOpenPeople}>
-            Open the people map
-          </button>
         </div>
       )}
     </aside>

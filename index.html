@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live Call Transcripts</title>
+<style>
+  :root {
+    --bg: #f6f6f4; --card: #ffffff; --text: #111; --muted: #888; --partial: #a8a8a8;
+    --border: #e3e3df; --live: #1a8f3c; --ended: #999; --bad: #c0392b; --op: #1f4e8c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  header { display: flex; align-items: center; justify-content: space-between;
+           padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--card); }
+  h1 { font-size: 17px; margin: 0; }
+  #status { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  #status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); }
+  #status.ok .dot { background: var(--live); }
+  main { max-width: 980px; margin: 0 auto; padding: 20px 16px; display: grid; gap: 16px; }
+  .empty { color: var(--muted); text-align: center; padding: 60px 0; }
+  .call { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .call-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+               padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 14px; flex-wrap: wrap; }
+  .from { font-weight: 600; }
+  .meta { color: var(--muted); font-size: 12px; font-family: ui-monospace, Menlo, monospace;
+          overflow-wrap: anywhere; }
+  .head-right { display: flex; align-items: baseline; gap: 12px; }
+  .badge { font-size: 12px; font-weight: 600; color: var(--live); }
+  .call.ended .badge { color: var(--ended); }
+  .phase { font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--muted);
+           border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; }
+  .phase.crisis { color: #fff; background: var(--bad); border-color: var(--bad); }
+  .download { font-size: 12px; color: var(--op); text-decoration: none; }
+  .download:hover { text-decoration: underline; }
+  .body { display: grid; grid-template-columns: minmax(0, 1fr) 280px; }
+  .turns { padding: 10px 14px; min-height: 44px; max-height: 520px; overflow-y: auto; }
+  .turn { margin: 4px 0; }
+  .turn .who { font-weight: 600; margin-right: 4px; }
+  .turn.op .who { color: var(--op); }
+  .turn.partial { color: var(--partial); }
+  .turn.partial .who { color: var(--partial); }
+  .turn.final { color: var(--text); }
+  .waiting { color: var(--muted); font-style: italic; font-size: 14px; }
+  .profile { border-left: 1px solid var(--border); padding: 10px 14px; font-size: 13px; }
+  .profile h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted);
+                margin: 0 0 6px; }
+  .profile dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; }
+  .profile dt { color: var(--muted); }
+  .profile dd { margin: 0; overflow-wrap: anywhere; }
+  .profile dd.none { color: #ccc; }
+  .profile .summary { margin-top: 10px; color: #333; }
+  .profile .crisis { margin-top: 8px; color: var(--bad); font-weight: 600; }
+  .profile .ready { margin-top: 8px; color: var(--live); font-weight: 600; }
+  @media (max-width: 720px) {
+    .body { grid-template-columns: 1fr; }
+    .profile { border-left: 0; border-top: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Live call transcripts</h1>
+  <div id="status"><span class="dot"></span><span id="status-text">connecting…</span></div>
+</header>
+<main id="calls"><div class="empty" id="empty">No calls yet. Call the Twilio number.</div></main>
+
+<script>
+  // call_id -> { el, turnsEl, profileEl, lines: Map(key -> el), finals: Set(key) }
+  // Caller lines are keyed "c:<turn_id>", operator lines "o:<turn_id>". Each line is
+  // placed by the ts it first appeared with, so the conversation reads in order.
+  // The page is opened as /?token=...; the WebSocket and downloads need the same token.
+  const TOKEN = new URLSearchParams(location.search).get("token") || "";
+  const TOKEN_QUERY = TOKEN ? `?token=${encodeURIComponent(TOKEN)}` : "";
+  const calls = new Map();
+  const callsEl = document.getElementById("calls");
+  const emptyEl = document.getElementById("empty");
+  const PROFILE_FIELDS = [
+    ["name", "Name"], ["school", "School"], ["year", "Year"], ["major", "Major"], ["email", "Email"],
+    ["situation", "Situation"], ["themes", "Themes"], ["stage", "How long"], ["wants", "Wants"], ["partner_traits", "Wants in a partner"],
+    ["ai_use", "AI use"], ["interests", "Interests"], ["timing", "Timing"],
+  ];
+
+  function fmtTime(ts) { return ts ? new Date(ts * 1000).toLocaleTimeString() : ""; }
+
+  function ensureCall(callId, fromNumber, ts) {
+    let c = calls.get(callId);
+    if (c) {
+      if (fromNumber) c.el.querySelector(".from").textContent = fromNumber;
+      return c;
+    }
+    const el = document.createElement("section");
+    el.className = "call";
+    el.innerHTML = `
+      <div class="call-head">
+        <div><span class="from"></span> <span class="meta"></span></div>
+        <div class="head-right">
+          <span class="phase" hidden></span>
+          <a class="download" download>Download JSON</a>
+          <span class="badge">● LIVE</span>
+        </div>
+      </div>
+      <div class="body">
+        <div class="turns"><div class="waiting">Listening…</div></div>
+        <div class="profile"><h2>Profile</h2><dl></dl><div class="extra"></div></div>
+      </div>`;
+    el.querySelector(".from").textContent = fromNumber || "Unknown caller";
+    el.querySelector(".meta").textContent = `${callId} · ${fmtTime(ts)}`;
+    el.querySelector(".download").href = `/calls/${encodeURIComponent(callId)}/record.json${TOKEN_QUERY}`;
+    callsEl.prepend(el);
+    emptyEl.style.display = "none";
+    c = { el, turnsEl: el.querySelector(".turns"), profileEl: el.querySelector(".profile"),
+          lines: new Map(), finals: new Set() };
+    calls.set(callId, c);
+    renderProfile(c, null);
+    return c;
+  }
+
+  function endCall(callId) {
+    const c = calls.get(callId);
+    if (!c) return;
+    c.el.classList.add("ended");
+    c.el.querySelector(".badge").textContent = "ENDED";
+    const w = c.turnsEl.querySelector(".waiting");
+    if (w) w.textContent = "No speech transcribed.";
+  }
+
+  function placeLine(c, key, ts, who, cls) {
+    let t = c.lines.get(key);
+    if (t) return t;
+    const w = c.turnsEl.querySelector(".waiting");
+    if (w) w.remove();
+    const nearBottom = c.turnsEl.scrollHeight - c.turnsEl.scrollTop - c.turnsEl.clientHeight < 60;
+    t = document.createElement("p");
+    t.dataset.ts = String(ts || Date.now() / 1000);
+    t.className = "turn " + cls;
+    t.innerHTML = `<span class="who"></span><span class="text"></span>`;
+    t.querySelector(".who").textContent = who;
+    const after = [...c.turnsEl.children].find(n => Number(n.dataset.ts) > Number(t.dataset.ts));
+    c.turnsEl.insertBefore(t, after || null);
+    c.lines.set(key, t);
+    if (nearBottom) c.turnsEl.scrollTop = c.turnsEl.scrollHeight;
+    return t;
+  }
+
+  function setLine(c, key, t, text, final) {
+    t.classList.remove("partial", "final");
+    t.classList.add(final ? "final" : "partial");
+    t.querySelector(".text").textContent = text;
+    if (final) c.finals.add(key);
+  }
+
+  function showTranscript(callId, turnId, text, final, ts) {
+    const c = ensureCall(callId);
+    const key = "c:" + String(turnId);
+    if (c.finals.has(key) && !final) return;   // ignore late partials
+    setLine(c, key, placeLine(c, key, ts, "You:", "caller"), text, final);
+  }
+
+  function showOperator(callId, turnId, text, final, ts) {
+    const c = ensureCall(callId);
+    const key = "o:" + String(turnId);
+    if (c.finals.has(key) && !final) return;
+    if (final && !text) {                       // cut off before any of it was heard
+      const t = c.lines.get(key);
+      if (t) t.remove();
+      c.lines.delete(key);
+      c.finals.add(key);
+      return;
+    }
+    setLine(c, key, placeLine(c, key, ts, "Operator:", "op"), text, final);
+  }
+
+  function renderProfile(c, record) {
+    const profile = (record && record.profile) || {};
+    const dl = c.profileEl.querySelector("dl");
+    dl.innerHTML = "";
+    for (const [field, label] of PROFILE_FIELDS) {
+      const dt = document.createElement("dt");
+      const dd = document.createElement("dd");
+      dt.textContent = label;
+      let v = profile[field];
+      if (Array.isArray(v)) v = v.join(", ");
+      if (v === null || v === undefined || v === "") { dd.textContent = "—"; dd.className = "none"; }
+      else dd.textContent = String(v).replaceAll("_", " ");
+      dl.append(dt, dd);
+    }
+    const extra = c.profileEl.querySelector(".extra");
+    extra.innerHTML = "";
+    if (!record) return;
+    const note = (cls, text) => {
+      const d = document.createElement("div");
+      d.className = cls;
+      d.textContent = text;
+      extra.append(d);
+    };
+    if (record.summary) note("summary", record.summary);
+    if (record.crisis && record.crisis.level !== "none")
+      note("crisis", `Crisis: ${record.crisis.level}${record.crisis.reason ? " (" + record.crisis.reason + ")" : ""}`);
+    if (record.ready_to_match) note("ready", "Ready to match");
+    const phase = c.el.querySelector(".phase");
+    phase.hidden = !record.phase;
+    phase.textContent = record.phase || "";
+    phase.classList.toggle("crisis", record.phase === "CRISIS");
+  }
+
+  function handle(msg) {
+    switch (msg.type) {
+      case "snapshot":
+        calls.clear();
+        callsEl.querySelectorAll(".call").forEach(n => n.remove());
+        emptyEl.style.display = "";
+        for (const call of msg.calls) {
+          ensureCall(call.call_id, call.from_number, call.started_ts);
+          for (const t of call.turns) showTranscript(call.call_id, t.turn_id, t.text, t.final, t.ts);
+          if (!call.active) endCall(call.call_id);
+        }
+        break;
+      case "call_started": ensureCall(msg.call_id, msg.from_number, msg.ts); break;
+      case "muse_transcript": showTranscript(msg.call_id, msg.turn_id, msg.text, msg.final, msg.ts); break;
+      case "operator_text": showOperator(msg.call_id, msg.turn_id, msg.text, msg.final, msg.ts); break;
+      case "call_record": renderProfile(ensureCall(msg.call_id), msg.record); break;
+      case "call_ended": endCall(msg.call_id); break;
+    }
+  }
+
+  const statusEl = document.getElementById("status");
+  const statusText = document.getElementById("status-text");
+  let retryMs = 500;
+
+  function connect() {
+    const proto = location.protocol === "https:" ? "wss:" : "ws:";
+    const ws = new WebSocket(`${proto}//${location.host}/dashboard${TOKEN_QUERY}`);
+    ws.onopen = () => {
+      retryMs = 500;
+      statusEl.classList.add("ok");
+      statusText.textContent = "connected";
+    };
+    ws.onmessage = (e) => handle(JSON.parse(e.data));
+    ws.onclose = () => {
+      statusEl.classList.remove("ok");
+      statusText.textContent = `reconnecting in ${(retryMs / 1000).toFixed(1)}s…`;
+      setTimeout(connect, retryMs);
+      retryMs = Math.min(retryMs * 2, 5000);
+    };
+    ws.onerror = () => ws.close();
+  }
+  connect();
+</script>
+</body>
+</html>

@@ -353,6 +353,119 @@ def student_expansion(student_id: str):
     return result
 
 
+# ---------- Campus resources while a caller waits (phone app) ----------
+# Google search through SerpApi for the school name plus a generic topic. Nothing about the
+# student is sent. Only links on the school's own .edu domain are kept. Never used for crisis help:
+# crisis callers get the fixed 988 screen and never reach this code.
+
+RESOURCE_TOPICS = [
+    # (topic id the app labels, what is searched after the school name)
+    ("first_gen", "first-generation student center"),
+    ("peer_mentoring", "peer mentoring program"),
+    ("clubs", "student organizations club fair"),
+    ("counseling", "counseling center drop-in hours"),
+]
+RESOURCE_RETRY_SECONDS = 300   # a school whose searches failed is tried again after this long
+_resources = {"done": {}, "pending": set()}
+
+
+def _school_query_name(school):
+    """The school name only, with anything that isn't part of a name taken out."""
+    text = re.sub(r"\([^)]*\)|\S+@\S+|https?://\S+|\S+\.(edu|com|org|net)\S*", " ", school or "")
+    words = [w for w in re.sub(r"[^A-Za-z&' ]", " ", text).split() if w.lower() != "call"]
+    return " ".join(words)[:80]
+
+
+def _edu_domain(link):
+    """'https://www.utdallas.edu/x' -> 'utdallas.edu'. None if the link is not on a .edu site."""
+    from urllib.parse import urlparse
+
+    url = urlparse(link or "")
+    host = (url.hostname or "").lower()
+    if url.scheme not in ("http", "https") or not host.endswith(".edu"):
+        return None
+    return ".".join(host.split(".")[-2:])
+
+
+def _fetch_resources(school, cache_key, key):
+    try:
+        _fetch_resources_now(school, cache_key, key)
+    except Exception as e:
+        print("campus resources failed:", str(e).splitlines()[0] if str(e) else type(e).__name__)
+        with _serp_lock:
+            _resources["done"][cache_key] = {"at": time.time(), "items": [], "ok": False}
+    finally:
+        with _serp_lock:
+            _resources["pending"].discard(cache_key)
+
+
+def _fetch_resources_now(school, cache_key, key):
+    import requests
+
+    found, ok = {}, True
+    for topic, words in RESOURCE_TOPICS:
+        with _serp_lock:
+            if _serp["used"] >= _serp_limit():
+                ok = False
+                break
+            _serp["used"] += 1
+        try:
+            body = requests.get("https://serpapi.com/search.json",
+                                params={"engine": "google", "q": f"{school} {words}", "api_key": key},
+                                timeout=20).json()
+        except Exception:
+            ok = False
+            continue
+        if body.get("error"):
+            ok = False
+            continue
+        found[topic] = [r for r in body.get("organic_results") or [] if _edu_domain(r.get("link"))]
+
+    # The school's own domain is the .edu site that comes up most across the topics, e.g. utdallas.edu.
+    # Results on any other .edu (another university) are dropped.
+    counts = {}
+    for rows in found.values():
+        for d in {_edu_domain(r["link"]) for r in rows}:
+            counts[d] = counts.get(d, 0) + 1
+    home = max(counts, key=counts.get) if counts else None
+    items = []
+    for topic, _ in RESOURCE_TOPICS:
+        for r in found.get(topic, []):
+            if _edu_domain(r["link"]) == home and r.get("title"):
+                snippet = (r.get("snippet") or "").strip()
+                items.append({"title": r["title"].strip(), "link": r["link"],
+                              "snippet": snippet[:157] + "..." if len(snippet) > 160 else snippet, "topic": topic})
+                break
+    with _serp_lock:
+        _resources["done"][cache_key] = {"at": time.time(), "items": items[:4], "ok": ok}
+
+
+def _campus_resources(school):
+    """
+    Up to 4 real resources at this school, for the waiting screen. Never raises and never waits on
+    SerpApi: the first poll for a school starts the searches in the background and returns [], and
+    later polls (the app asks every 3 seconds) get the cached list without spending credits.
+    """
+    try:
+        name = _school_query_name(school)
+        key = os.environ.get("SERPAPI_KEY", "").strip().strip('"')
+        if not name or not key:
+            return []
+        cache_key = name.lower()
+        with _serp_lock:
+            hit = _resources["done"].get(cache_key)
+            if hit and (hit["ok"] or time.time() - hit["at"] < RESOURCE_RETRY_SECONDS):
+                return list(hit["items"])
+            if cache_key in _resources["pending"]:
+                return list(hit["items"]) if hit else []
+            _resources["pending"].add(cache_key)
+        threading.Thread(target=_fetch_resources, args=(name, cache_key, key), daemon=True).start()
+        return list(hit["items"]) if hit else []
+    except Exception as e:
+        print("campus resources failed:", str(e).splitlines()[0] if str(e) else type(e).__name__)
+        return []
+
+
 @app.get("/pairs")
 def pairs(limit: int = 500):
     """Every match as a line between two students, for the people graph."""
@@ -463,8 +576,8 @@ def app_status(phone: str):
 
     matches = student_matches(sid)
     if not matches:
-        # SerpApi can fill "resources" later (real links at the caller's school)
-        return {"state": "waiting", "student_id": sid, "me": me, "resources": []}
+        # Real links at the caller's school while they wait (SerpApi, school name only)
+        return {"state": "waiting", "student_id": sid, "me": me, "resources": _campus_resources(me["school"])}
 
     m = matches[0]
     other = db().execute("SELECT is_synthetic FROM students WHERE student_id = %s", (m["other_id"],)).fetchone()

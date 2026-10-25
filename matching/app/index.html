@@ -294,9 +294,11 @@ button{font-family:inherit}
 
 <script>
 /* ---------- settings ---------- */
-const HOTLINE = "+10000000000";   // TODO: the Twilio phone number judges call
+const HOTLINE = "+16063571925";   // the Twilio phone number judges call: (606) 357-1925
 const API = "";                   // same server as this page; leave empty
 const POLL_MS = 3000;
+// Labels for the campus resources the server finds while a caller waits
+const TOPIC_LABEL = { first_gen: "First-gen", peer_mentoring: "Peer mentoring", clubs: "Clubs", counseling: "Counseling" };
 
 /* ---------- helpers ---------- */
 const $ = (id) => document.getElementById(id);
@@ -413,6 +415,12 @@ function renderHome(){
   if (status.state === "waiting") {
     box.innerHTML = `<h3 style="margin:0;font-size:15px;font-weight:600" class="muted">Last time you called</h3>` +
       rowCard("#match", null, "Looking for someone who gets it", "We’ll show them here when we find them", true);
+    const res = status.resources || [];
+    if (res.length) {
+      const school = me && me.school ? esc(me.school) : "your school";
+      box.innerHTML += rowCard("#match", null, `Resources at ${school}`,
+        `${res.length} place${res.length === 1 ? "" : "s"} to go while you wait: ${res.map(r => TOPIC_LABEL[r.topic]).filter(Boolean).join(", ")}`);
+    }
     return;
   }
   const m = status.match;
@@ -491,8 +499,8 @@ function showMatchState(){
     $("resources").classList.toggle("hidden", !res.length);
     if (res.length) {
       $("resources").innerHTML = `<h3 class="muted" style="margin:0;font-size:15px;font-weight:600">While you wait${status.me && status.me.school ? ", at " + esc(status.me.school) : ""}</h3>` +
-        res.map(r => `<a href="${esc(r.link)}" target="_blank" rel="noopener" class="card" style="padding:16px;color:var(--text);text-decoration:none;display:flex;align-items:center;gap:14px">
-          <span style="flex:1;display:flex;flex-direction:column;gap:3px"><span style="font-size:16px;font-weight:600">${esc(r.title)}</span><span class="muted" style="font-size:14px">${esc(r.snippet || "")}</span></span>
+        res.map(r => `<a href="${esc(r.link)}" target="_blank" rel="noopener noreferrer" class="card" style="padding:16px;color:var(--text);text-decoration:none;display:flex;align-items:center;gap:14px">
+          <span style="flex:1;display:flex;flex-direction:column;gap:3px">${TOPIC_LABEL[r.topic] ? `<span class="pill sm" style="align-self:flex-start">${TOPIC_LABEL[r.topic]}</span>` : ""}<span style="font-size:16px;font-weight:600">${esc(r.title)}</span><span class="muted" style="font-size:14px">${esc(r.snippet || "")}</span></span>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></a>`).join("");
     }
     return;

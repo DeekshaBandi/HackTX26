@@ -213,6 +213,29 @@ def student_matches(student_id: str):
     return [dict(zip(keys, r)) for r in rows]
 
 
+@app.get("/students/{student_id}/nearby")
+def student_nearby(student_id: str, k: int = 10):
+    """
+    Read-only: the k students closest to this one, with scores and xyz, for the judge site's
+    people map. Same search as a call turn, but writes nothing and logs no events.
+    Like matching, it skips people this student was already matched with.
+    """
+    row = db().execute(
+        "SELECT embedding_sf IS NOT NULL, embedding IS NOT NULL FROM students WHERE student_id = %s",
+        (student_id,)).fetchone()
+    if not row:
+        raise HTTPException(404, "no such student")
+    if not row[0] and not row[1]:
+        return {"student_id": student_id, "embedder": None, "threshold": None, "matches": [], "live_match": None}
+    col = "embedding_sf" if row[0] else "embedding"
+    matches, live = match.search(student_id, k=max(1, min(k, 50)), col=col)
+    pos = _xyz_for([m["student_id"] for m in matches])
+    for m in matches:
+        m["xyz"] = pos.get(m["student_id"])
+    return {"student_id": student_id, "embedder": "snowflake" if col == "embedding_sf" else "local",
+            "threshold": match.THRESHOLDS[col], "matches": matches, "live_match": live}
+
+
 @app.get("/pairs")
 def pairs(limit: int = 500):
     """Every match as a line between two students, for the people graph."""

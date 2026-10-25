@@ -1,116 +1,144 @@
-import { EMBED_WHY, LINES, TOKENS, axisById } from '../data/call.ts'
-
-const EMOTION_COLOR: Record<string, string> = {
-  anxious: '#9a3412',
-  lonely: '#245e4a',
-  tired: '#6b5130',
-  hopeful: '#3c7a4a',
-  angry: '#8d3b32',
-}
+import { API_BASE, type ApiStudent, type CallEvent } from '../lib/api.ts'
+import type { LiveCall } from '../lib/useJudgeData.ts'
+import { shortId, summaryOf } from '../data/students.ts'
 
 type Props = {
-  revealedLines: number
-  selectedId: string | null
-  onSelect: (id: string | null) => void
-  onReplay: () => void
+  error: string | null
+  calls: LiveCall[]
+  call: LiveCall | null
+  caller: ApiStudent | null
+  selected: ApiStudent | null
+  themeColor: (theme: string | null) => string
+  onPickCall: (key: string | null) => void
   nearest: { label: string; score: number } | null
 }
 
-export function EmbeddingPanel({ revealedLines, selectedId, onSelect, onReplay, nearest }: Props) {
-  const line = revealedLines > 0 ? LINES[revealedLines - 1] : null
-  const token = TOKENS.find((item) => item.id === selectedId) ?? null
-  const done = revealedLines >= LINES.length
+function time(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })
+}
 
+const METHOD: Record<string, string> = {
+  in_app: 'in the app',
+  group_text: 'by group text',
+  call_merge: 'by merging the calls',
+  sms: 'by text',
+}
+
+/** One line of the live feed, in plain words. */
+function describe(event: CallEvent): string {
+  const d = event.detail ?? {}
+  switch (event.event) {
+    case 'call_started':
+      return 'Call connected.'
+    case 'profile_updated': {
+      const fields = Array.isArray(d.fields) ? (d.fields as string[]).join(', ') : 'profile'
+      if (!d.reembedded) return `Heard: ${fields}.`
+      const ms = event.value != null ? ` in ${Math.round(event.value)} ms` : ''
+      return `Heard: ${fields}. Re-embedded with ${d.embedder === 'local' ? 'the local backup' : 'Snowflake'}${ms}.`
+    }
+    case 'match_found': {
+      const score = typeof d.score === 'number' ? Math.round(d.score * 100) : '?'
+      const who = typeof d.match === 'string' ? `Student · ${shortId(d.match)}` : 'someone'
+      const ms = event.value != null ? ` Search took ${event.value} ms.` : ''
+      return `Closest match: ${who}, score ${score}${d.live ? ', on a call right now' : ''}. Plan: ${String(d.decision ?? '').replace('_', ' ')}.${ms}`
+    }
+    case 'crisis':
+      return `Crisis flag (${String(d.level ?? 'concern')}). No peer matching for this caller.`
+    case 'call_ended':
+      return 'Call ended.'
+    default:
+      if (event.event in METHOD) {
+        const who = typeof d.with === 'string' ? `Student · ${shortId(d.with)}` : 'their match'
+        return `Connected with ${who} ${METHOD[event.event]}.`
+      }
+      return event.event.replace(/_/g, ' ')
+  }
+}
+
+export function EmbeddingPanel({ error, calls, call, caller, selected, themeColor, onPickCall, nearest }: Props) {
   return (
     <aside className="panel">
-      <div className="panel-top">
-        <div>
-          <p className="kicker">Embedding</p>
-          <h2>What the call becomes</h2>
-        </div>
-        <button type="button" className="text-btn" onClick={onReplay}>
-          Play again
-        </button>
-      </div>
+      <p className="kicker">Embedding</p>
+      <h2>Where the call lands</h2>
       <p className="lede">
-        Hardcoded transcript. Each phrase leaves you and lands in the bucket the AI files it under.
+        Every dot is a student, placed by their Snowflake embedding and colored by theme. The blue pin is the caller. Lines run to
+        their nearest students, and faint lines join pairs matching has already connected.
       </p>
 
-      <h4>Summary</h4>
-      <blockquote>
-        {line?.summary ?? 'Waiting on the first sentence.'}
-      </blockquote>
-
-      <h4>Emotion</h4>
-      {line ? (
-        <ul className="emotion-list">
-          {line.emotions.map((emotion) => (
-            <li key={emotion.id}>
-              <div className="part-top">
-                <span>{emotion.label}</span>
-                <span>{emotion.value}</span>
-              </div>
-              <div className="track">
-                <span
-                  style={{
-                    width: `${emotion.value}%`,
-                    background: EMOTION_COLOR[emotion.id] ?? '#9a4e24',
-                  }}
-                />
-              </div>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="note">Nothing filed yet. Anxious, lonely, tired, hopeful, and angry will show up as the sentences land.</p>
+      {error && (
+        <div className="empty-card">
+          <p>Can't reach the matching API at {API_BASE}.</p>
+          <p>{error}</p>
+        </div>
       )}
 
-      <h4>Why the embedding looks like this</h4>
-      <p className="why-copy">{line ? EMBED_WHY : 'The point starts on you. It only moves once a sentence has somewhere to go.'}</p>
-
-      {line && (
-        <ul className="axis-list">
-          {TOKENS.filter((item) => item.line < revealedLines).map((item) => {
-            const axis = axisById(item.axis)
-            const on = item.id === token?.id
-            return (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  className={on ? 'axis-btn on' : 'axis-btn'}
-                  onClick={() => onSelect(on ? null : item.id)}
-                >
-                  <span className="axis-name">
-                    <i style={{ background: axis.ink }} />
-                    {axis.label}
-                    <em>{line.vector[axis.id].toFixed(2)}</em>
-                  </span>
-                  <span className="axis-quote">“{item.quote}”</span>
-                  <span className="axis-because">{item.because}</span>
-                </button>
-              </li>
-            )
-          })}
-        </ul>
+      {calls.length > 1 && (
+        <>
+          <h4>Recent calls</h4>
+          <div className="chips" role="listbox" aria-label="Calls">
+            {calls.slice(0, 8).map((item, i) => (
+              <button
+                key={item.key}
+                type="button"
+                className="chip"
+                aria-pressed={item.key === call?.key}
+                onClick={() => onPickCall(i === 0 ? null : item.key)}
+              >
+                <span>{shortId(item.studentId)}</span>
+                <strong>{item.ended ? time(item.lastAt) : 'live'}</strong>
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
-      <h4>Transcript</h4>
-      <ol className="call-log" aria-live="polite">
-        {LINES.map((item, index) => (
-          <li key={item.clock} className={index >= revealedLines ? 'future' : index === revealedLines - 1 ? 'on' : ''}>
-            <span>{item.clock}</span>
-            <p>{item.text}</p>
-          </li>
-        ))}
-      </ol>
+      {!call && !caller && !error && (
+        <div className="empty-card">
+          <p>Waiting for a call.</p>
+          <p>Calls from the last two hours show up here as they happen. To send a sample one, from matching/ run:</p>
+          <p className="code-block">curl -X POST {API_BASE}/call/record -H "Content-Type: application/json" -d @samples/call_maya_lonely.json</p>
+        </div>
+      )}
 
-      {done && (
-        <div className="ready">
-          <p>
-            {nearest
-              ? `Filed. The people map on the right sits this point nearest ${nearest.label}, compatibility ${nearest.score}.`
-              : 'Filed. The people map is still loading the search.'}
+      {caller && (
+        <>
+          <h4>Summary</h4>
+          <blockquote>{summaryOf(caller)}</blockquote>
+          <h4>Cluster</h4>
+          <p className="why-copy">
+            <span className="pin-dot" style={{ background: themeColor(caller.theme), display: 'inline-block', marginRight: 8 }} />
+            {caller.theme
+              ? `Lands among students whose theme is “${caller.theme}”, the most common theme among their closest demo students.`
+              : 'No theme yet. It is set once the caller has a situation and a first search runs.'}
           </p>
+        </>
+      )}
+
+      {selected && (
+        <>
+          <h4>Selected dot · Student · {shortId(selected.student_id)}</h4>
+          <blockquote>{summaryOf(selected)}</blockquote>
+        </>
+      )}
+
+      {call && (
+        <>
+          <h4>Live call</h4>
+          <ol className="call-log" aria-live="polite">
+            {call.events.map((event, index) => (
+              <li key={`${event.time}-${index}`} className={index === call.events.length - 1 ? 'on' : ''}>
+                <span>{time(event.time)}</span>
+                <p>{describe(event)}</p>
+              </li>
+            ))}
+          </ol>
+          <p className="note">Transcripts are never stored. This feed is what matching logged during the call.</p>
+        </>
+      )}
+
+      {nearest && (
+        <div className="ready">
+          <p>{`The people map on the right sits this caller nearest ${nearest.label}, similarity ${nearest.score}.`}</p>
         </div>
       )}
     </aside>

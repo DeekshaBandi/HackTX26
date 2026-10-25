@@ -1,48 +1,41 @@
-import { useEffect, useMemo, useState } from 'react'
-import { LINES } from './data/call.ts'
+import { useCallback, useMemo, useState } from 'react'
 import { topPins } from './data/students.ts'
-import { expansionReport, type SearchPhrase } from './lib/expand.ts'
-import { phrasesFromEngines, runSerpApiExpansion, type LiveEngine } from './lib/serpapiLive.ts'
+import { API_BASE } from './lib/api.ts'
+import { useJudgeData } from './lib/useJudgeData.ts'
 import { EmbeddingPanel } from './components/EmbeddingPanel.tsx'
 import { EmbeddingView } from './components/EmbeddingView.tsx'
 import { MapLoading } from './components/MapLoading.tsx'
 import { PeopleGraph } from './components/PeopleGraph.tsx'
 import { PeoplePanel } from './components/PeoplePanel.tsx'
 
+const THEME_COLORS = [
+  '#3c7a4a', '#a67c2d', '#3d7a78', '#7a5b8a', '#b5734a', '#4f6f8f',
+  '#8a6248', '#b3403a', '#6b5130', '#245e4a', '#8d3b32', '#5f7f3a',
+]
+
 export default function App() {
-  const [revealedLines, setRevealedLines] = useState(0)
-  const [phraseId, setPhraseId] = useState<string | null>(null)
+  const data = useJudgeData()
+  const [dotId, setDotId] = useState<string | null>(null)
   const [personId, setPersonId] = useState<string | null>(null)
-  const [expanded, setExpanded] = useState(true)
-  const [searchDone, setSearchDone] = useState<LiveEngine[]>([])
-  const [searchPhrases, setSearchPhrases] = useState<SearchPhrase[] | null>(null)
-  const [embedDone, setEmbedDone] = useState(false)
-  const phraseTexts = useMemo(() => (searchPhrases ?? []).map((phrase) => phrase.text), [searchPhrases])
-  const report = useMemo(() => expansionReport(searchPhrases ?? []), [searchPhrases])
-  const pins = useMemo(() => topPins(expanded, phraseTexts), [expanded, phraseTexts])
-  const mapReady = embedDone && searchPhrases !== null
+  const pins = useMemo(() => topPins(data.nearby), [data.nearby])
+  const nearIds = useMemo(() => pins.map((pin) => pin.id), [pins])
+  const mapReady = data.students !== null && data.caller !== null && pins.length > 0
 
-  useEffect(() => {
-    if (revealedLines >= LINES.length) {
-      setEmbedDone(true)
-      return
-    }
-    const delay = revealedLines === 0 ? 700 : 1900
-    const id = window.setTimeout(() => setRevealedLines((count) => count + 1), delay)
-    return () => window.clearTimeout(id)
-  }, [revealedLines])
+  // Same color for a theme everywhere on the page
+  const themes = useMemo(
+    () => [...new Set((data.students ?? []).map((row) => row.theme).filter((theme): theme is string => Boolean(theme)))].sort(),
+    [data.students],
+  )
+  const themeColor = useCallback(
+    (theme: string | null) => {
+      const i = theme ? themes.indexOf(theme) : -1
+      return i < 0 ? '#9c8f80' : THEME_COLORS[i % THEME_COLORS.length]
+    },
+    [themes],
+  )
 
-  useEffect(() => {
-    let cancelled = false
-    runSerpApiExpansion((row) => {
-      if (!cancelled) setSearchDone((rows) => [...rows, row])
-    }).then((rows) => {
-      if (!cancelled) setSearchPhrases(phrasesFromEngines(rows))
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const selectedDot = data.students?.find((row) => row.student_id === dotId) ?? null
+  const live = data.call && !data.call.ended
 
   return (
     <div className="shell">
@@ -52,27 +45,37 @@ export default function App() {
           <span className="brand-name">AIEDH</span>
           <span className="brand-sub">Judge</span>
         </div>
-        <p className="brand-meta">Sample data · Sat, Oct 24</p>
+        <p className="brand-meta">
+          {data.error ? 'API offline' : live ? 'Live call' : data.call ? 'Last call' : 'Waiting for a call'} · {API_BASE.replace(/^https?:\/\//, '')}
+        </p>
       </header>
 
       <div className="pair">
         <section className="column">
           <div className="stage-main">
             <EmbeddingView
-              revealedLines={revealedLines}
-              selectedId={phraseId}
-              onSelect={setPhraseId}
+              students={data.students ?? []}
+              caller={data.caller}
+              nearIds={nearIds}
+              pairs={data.pairs}
+              themeColor={themeColor}
+              selectedId={dotId}
+              onSelect={setDotId}
             />
           </div>
           <EmbeddingPanel
-            revealedLines={revealedLines}
-            selectedId={phraseId}
-            onSelect={setPhraseId}
-            nearest={mapReady ? { label: pins[0].label, score: pins[0].score } : null}
-            onReplay={() => {
-              setPhraseId(null)
-              setRevealedLines(0)
+            error={data.error}
+            calls={data.calls}
+            call={data.call}
+            caller={data.caller}
+            selected={selectedDot}
+            themeColor={themeColor}
+            onPickCall={(key) => {
+              data.selectCall(key)
+              setPersonId(null)
+              setDotId(null)
             }}
+            nearest={mapReady ? { label: pins[0].label, score: pins[0].score } : null}
           />
         </section>
 
@@ -86,22 +89,20 @@ export default function App() {
               />
             ) : (
               <MapLoading
-                doneIds={searchDone.map((row) => row.id)}
-                embedStep={revealedLines}
-                searchBack={searchPhrases !== null}
+                studentsLoaded={data.students !== null}
+                hasCaller={data.callerId !== null}
+                embedded={pins.length > 0}
               />
             )}
           </div>
           <PeoplePanel
             ready={mapReady}
-            calls={searchDone}
             students={pins}
-            report={report}
-            expanded={expanded}
-            onExpanded={(next) => {
-              setExpanded(next)
-              setPersonId(null)
-            }}
+            total={data.students?.length ?? null}
+            caller={data.caller}
+            call={data.call}
+            nearby={data.nearby}
+            delivered={data.delivered}
             selectedId={personId}
             onSelect={setPersonId}
           />

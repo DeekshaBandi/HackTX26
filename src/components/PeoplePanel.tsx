@@ -1,24 +1,28 @@
-import { LINES } from '../data/call.ts'
-import { CALLER, scoreMath, type Student } from '../data/students.ts'
-import type { ExpansionReport } from '../lib/expand.ts'
-import { SEARCH_STEPS, serpCallBudget, type LiveEngine } from '../lib/serpapiLive.ts'
-import { ExpandCompare } from './ExpandCompare.tsx'
+import type { ApiStudent, Nearby, StudentMatch } from '../lib/api.ts'
+import type { LiveCall } from '../lib/useJudgeData.ts'
+import { shortId, summaryOf, type Student } from '../data/students.ts'
 
 type Props = {
   ready: boolean
-  calls: LiveEngine[]
   students: Student[]
-  report: ExpansionReport
-  expanded: boolean
-  onExpanded: (expanded: boolean) => void
+  total: number | null
+  caller: ApiStudent | null
+  call: LiveCall | null
+  nearby: Nearby | null
+  delivered: StudentMatch[]
   selectedId: string | null
   onSelect: (id: string) => void
 }
 
-export function PeoplePanel({ ready, calls, students, report, expanded, onExpanded, selectedId, onSelect }: Props) {
+function clock(iso: string): string {
+  return new Date(iso).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
+export function PeoplePanel({ ready, students, total, caller, call, nearby, delivered, selectedId, onSelect }: Props) {
   const student = students.find((item) => item.id === selectedId) ?? null
   const isYou = selectedId === 'you'
   const bestId = students[0]?.id
+  const threshold = nearby?.threshold ?? null
 
   return (
     <aside className="panel">
@@ -27,86 +31,62 @@ export function PeoplePanel({ ready, calls, students, report, expanded, onExpand
       {!ready && (
         <>
           <p className="load-word">Loading</p>
-          <p className="lede">
-            Scores and distances stay hidden until the embedding is filed and SerpAPI returns the expansion phrases.
-          </p>
+          <p className="lede">Pins show up once the caller has an embedding and the matching API returns their nearest students.</p>
         </>
       )}
-
-      <CallReceipt calls={calls} />
 
       {ready && (
         <>
           <p className="lede">
-            Top 10 of {report.total.toLocaleString()} students in the file. Names and schools stay off this screen.
-            {` Closer to the center means a higher score from ${expanded ? 'the call plus words inside the SerpAPI phrases' : 'only the words they finished'}.`}
+            Top {students.length}
+            {total != null ? ` of ${total.toLocaleString()}` : ''} students by {nearby?.embedder === 'local' ? 'local backup' : 'Snowflake'} embedding
+            similarity. Closer to the center means more similar. Names and schools stay off this screen.
           </p>
-          <ExpandCompare report={report} expanded={expanded} onChange={onExpanded} />
-          <h4>Example phrases</h4>
-          <p className="note">The whole suggestion is rarely in the file, so that count stays 0. Scores use the words inside the suggestion that do appear.</p>
-          {report.wordHits.length > 0 && (
-            <ul className="auto-list">
-              {report.wordHits.slice(0, 8).map((word) => (
-                <li key={word.text}>
-                  <span>{word.text}</span>
-                  <em>{word.hits}</em>
-                  <small>word in the file</small>
-                </li>
-              ))}
-            </ul>
-          )}
-          {report.examples.length === 0 ? (
-            <p className="note">The search returned no expansion phrases.</p>
-          ) : (
-            <ul className="auto-list">
-              {report.examples.slice(0, 10).map((phrase) => (
-                <li key={`${phrase.source}-${phrase.text}`}>
-                  <span>{phrase.text}</span>
-                  <em>{phrase.hits}</em>
-                  <small>{phrase.source}</small>
-                </li>
-              ))}
-            </ul>
+          {threshold != null && (
+            <p className="note">
+              Matching connects two people at a score of {Math.round(threshold * 100)} or higher. People this caller was already
+              matched with are left off the map, the same as in matching.
+            </p>
           )}
         </>
       )}
 
-      <details className="call-fold">
-        <summary>The call</summary>
-        <ol className="call-log">
-          {LINES.map((item) => (
-            <li key={item.clock}>
-              <span>{item.clock}</span>
-              <p>{item.text}</p>
-            </li>
-          ))}
-        </ol>
-      </details>
+      {delivered.length > 0 && (
+        <div className="receipt">
+          <h4>Matched with</h4>
+          <ul>
+            {delivered.map((item) => (
+              <li key={item.match_id}>
+                <div className="part-top">
+                  <span>Student · {shortId(item.other_id)}</span>
+                  <span>{Math.round(item.score * 100)} · {item.method.replace('_', ' ')}</span>
+                </div>
+                <p>{item.other_situation ?? 'No situation on the record.'} · {clock(item.created_at)}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {ready && (
         <div className="chips" role="listbox" aria-label="Students">
-        <button
-          type="button"
-          className="chip"
-          aria-pressed={isYou}
-          onClick={() => onSelect('you')}
-        >
-          <span>YOU</span>
-          <strong>live</strong>
-        </button>
-        {students.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className="chip"
-            aria-pressed={item.id === selectedId}
-            onClick={() => onSelect(item.id)}
-          >
-            <span>{item.short}</span>
-            <strong>{item.score}</strong>
+          <button type="button" className="chip" aria-pressed={isYou} onClick={() => onSelect('you')}>
+            <span>YOU</span>
+            <strong>{call && !call.ended ? 'live' : 'call'}</strong>
           </button>
-        ))}
-      </div>
+          {students.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className="chip"
+              aria-pressed={item.id === selectedId}
+              onClick={() => onSelect(item.id)}
+            >
+              <span>{item.short}</span>
+              <strong>{item.score}</strong>
+            </button>
+          ))}
+        </div>
       )}
 
       {ready && !student && !isYou && (
@@ -116,61 +96,35 @@ export function PeoplePanel({ ready, calls, students, report, expanded, onExpand
         </div>
       )}
 
-      {isYou && <YouCard />}
-      {student && <StudentCard student={student} best={student.id === bestId} />}
+      {isYou && caller && <YouCard caller={caller} call={call} />}
+      {student && <StudentCard student={student} best={student.id === bestId} threshold={threshold} />}
     </aside>
   )
 }
 
-function CallReceipt({ calls }: { calls: LiveEngine[] }) {
-  const ordered = SEARCH_STEPS.map((step) => calls.find((call) => call.id === step.id)).filter((call) => call != null)
-  const budget = serpCallBudget()
-  return (
-    <div className="receipt">
-      <h4>SerpAPI</h4>
-      <p className="note">
-        {budget.used} of {budget.limit} uncached calls used. Cached replies do not move the plan counter, so these requests skip the cache. Nothing is loaded from a saved response.
-      </p>
-      <ul>
-        {ordered.map((call) => (
-          <li key={call.id}>
-            <div className="part-top">
-              <span>{call.label}</span>
-              <span>{call.receipt?.status ?? 'No response'}</span>
-            </div>
-            <p>
-              {call.receipt
-                ? `${call.receipt.createdAt} · ${call.receipt.seconds == null ? '' : `${call.receipt.seconds.toFixed(2)}s · `}${call.receipt.id}`
-                : call.error}
-            </p>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
-function YouCard() {
+function YouCard({ caller, call }: { caller: ApiStudent; call: LiveCall | null }) {
   return (
     <article className="detail">
       <header className="detail-head">
         <span className="pin-dot" style={{ background: '#1a73e8' }} />
         <div>
-          <h3>{CALLER.label}</h3>
-          <p className="redacted">Live caller · University withheld</p>
+          <h3>You</h3>
+          <p className="redacted">{call && !call.ended ? 'Live caller' : 'Caller'} · University withheld</p>
         </div>
       </header>
-      <p className="date">{CALLER.calledOn}</p>
-      <h4>Call summary</h4>
-      <blockquote>{CALLER.summary}</blockquote>
-      <p className="note">
-        Compatibility is only computed against the other pins. This card is the call those scores are compared to.
-      </p>
+      {call && <p className="date">{clock(call.startedAt)}{call.ended ? ' · call ended' : ' · on the call'}</p>}
+      <h4>What they said</h4>
+      <blockquote>{summaryOf(caller)}</blockquote>
+      <ul className="why-list">
+        {caller.stage && <li><div className="part-top"><span>Stage</span><span>{caller.stage}</span></div></li>}
+        {caller.major && <li><div className="part-top"><span>Major</span><span>{caller.major}</span></div></li>}
+      </ul>
+      <p className="note">Scores on the other pins compare their embedding to this caller's.</p>
     </article>
   )
 }
 
-function StudentCard({ student, best }: { student: Student; best: boolean }) {
+function StudentCard({ student, best, threshold }: { student: Student; best: boolean; threshold: number | null }) {
   return (
     <article className="detail">
       <header className="detail-head">
@@ -184,7 +138,7 @@ function StudentCard({ student, best }: { student: Student; best: boolean }) {
       <div className="score-row">
         <div>
           <p className="score">{student.score}</p>
-          <p className="muted">compatibility</p>
+          <p className="muted">similarity</p>
         </div>
         {best && <span className="best">Closest match</span>}
       </div>
@@ -192,40 +146,30 @@ function StudentCard({ student, best }: { student: Student; best: boolean }) {
         <span style={{ width: `${student.score}%` }} />
       </div>
 
-      <p className="date">{student.calledOn}</p>
+      <p className="date">
+        {student.synthetic ? 'Demo student' : 'Real caller'}
+        {student.online ? ' · on a call now' : ''}
+      </p>
 
-      <h4>Call summary</h4>
+      <h4>What they said</h4>
       <blockquote>{student.summary}</blockquote>
 
       <h4>Why this score</h4>
-      <p className="formula">Score = 0.5 words they said + 0.3 expanded phrases + 0.2 same major</p>
+      <p className="formula">Score = 1 − cosine distance between the two Snowflake embeddings, × 100</p>
       <ul className="why-list">
-        <li>
-          <div className="part-top">
-            <span>Words they said</span>
-            <span>{student.parts.topic.toFixed(2)}</span>
-          </div>
-          <div className="track"><span style={{ width: `${student.parts.topic * 100}%` }} /></div>
-          <p>{student.why[0].detail}</p>
-        </li>
-        <li>
-          <div className="part-top">
-            <span>Expanded phrases</span>
-            <span>{student.parts.emotion.toFixed(2)}</span>
-          </div>
-          <div className="track"><span style={{ width: `${student.parts.emotion * 100}%` }} /></div>
-          <p>{student.why[1].detail}</p>
-        </li>
-        <li>
-          <div className="part-top">
-            <span>Same major</span>
-            <span>{student.parts.ask.toFixed(2)}</span>
-          </div>
-          <div className="track"><span style={{ width: `${student.parts.ask * 100}%` }} /></div>
-          <p>{student.why[2].detail}</p>
-        </li>
+        {student.stage && <li><div className="part-top"><span>Stage</span><span>{student.stage}</span></div></li>}
+        {student.major && <li><div className="part-top"><span>Major</span><span>{student.major}</span></div></li>}
+        {student.year && <li><div className="part-top"><span>Year</span><span>{student.year}</span></div></li>}
       </ul>
-      <p className="math">{scoreMath(student.parts)}</p>
+      <p className="math">
+        {student.similarity.toFixed(3)}
+        {threshold != null
+          ? student.matchable
+            ? `  ≥  ${threshold.toFixed(2)}  →  close enough to match`
+            : `  <  ${threshold.toFixed(2)}  →  not close enough to match`
+          : ''}
+      </p>
+      <p className="note">Only what they are going through is embedded. Major, year, and interests are kept off the vector on purpose.</p>
     </article>
   )
 }
